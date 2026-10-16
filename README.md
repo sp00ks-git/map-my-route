@@ -25,9 +25,9 @@ Google account, no billing, no API keys needed. Live at
   explains what GPX is and how to open it on phones, Garmin and desktop.
 - **Share links** -- the whole route is packed into the URL, plus a **short link**
   (`/?s=<id>`) served by this site itself (`api/shorten.php`, `api/route.php`).
-- **Start/finish photos** -- on-demand photos near each end from Wikimedia Commons
-  (openly licensed, credited). Optionally add your own Google Maps API key in
-  Settings to use Street View instead where Google has coverage.
+- **Start/finish photos** -- on-demand photos near each end, no key needed:
+  KartaView street-level imagery first, then Wikimedia Commons (openly licensed,
+  credited).
 - **Phone layout** -- one compact top row (Globe/Route tabs, lat/lng, search,
   settings) and the Route panel as a pull-up bottom sheet, so the map gets the
   screen.
@@ -63,11 +63,11 @@ commits that keep the old version, and a running page reloads itself once if
 | Basemap | OpenFreeMap "Bright" (OpenMapTiles schema) |
 | Tap-to-tap routing | OSRM (project-osrm.org demo; FOSSGIS for foot/bike) |
 | Place search / area names | OpenStreetMap Nominatim |
-| Photos | Wikimedia Commons API |
+| Photos | KartaView API, then Wikimedia Commons API |
 | Road data fallback | Overpass API (best effort -- often flaky/limited) |
 
-Optional keys (Settings): openrouteservice (elevation), Google Maps (Street View
-photos). Keys live only in your browser's `localStorage`.
+Optional key (Settings): openrouteservice (elevation). It lives only in your
+browser's `localStorage`.
 
 ## Notes and limitations
 

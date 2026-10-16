@@ -2,7 +2,6 @@
 // this file is loaded as a plain ES module straight from the browser.
 
 export const ORS_KEY_STORAGE = "mapmyroute.orsApiKey";
-export const GOOGLE_KEY_STORAGE = "mapmyroute.googleMapsKey";
 export const COLOR_OVERRIDES_STORAGE = "mapmyroute.colorOverrides";
 
 export const OSRM_DEMO_URL = "https://router.project-osrm.org/route/v1/driving";
@@ -53,23 +52,6 @@ export const PROFILE_COLORS = {
   "cycling-regular": "#16a34a",
   "dog-walking": "#ea580c",
 };
-
-export function getGoogleKey() {
-  try {
-    return localStorage.getItem(GOOGLE_KEY_STORAGE) || "";
-  } catch {
-    return "";
-  }
-}
-
-export function setGoogleKey(key) {
-  try {
-    if (key) localStorage.setItem(GOOGLE_KEY_STORAGE, key);
-    else localStorage.removeItem(GOOGLE_KEY_STORAGE);
-  } catch {
-    // localStorage unavailable (private mode etc.) -- the key just isn't remembered
-  }
-}
 
 export function getOrsKey() {
   try {

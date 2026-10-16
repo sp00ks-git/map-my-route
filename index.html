@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.21" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.22" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.21";
+    var running = "1.2.22";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.21" />
+<link rel="stylesheet" href="css/style.css?v=1.2.22" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.21</span>
+    <span class="app-version">v1.2.22</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -220,14 +220,6 @@
     <label class="field-label" for="ors-key-input">openrouteservice API key (optional)</label>
     <input id="ors-key-input" type="text" placeholder="Only needed for elevation data" />
     <p class="tiny-hint">Stored only in this browser (localStorage). Never sent anywhere except openrouteservice.org.</p>
-    <label class="field-label" for="google-key-input">Google Maps API key (optional)</label>
-    <input id="google-key-input" type="text" placeholder="Only for Street View photos of start &amp; finish" />
-    <p class="tiny-hint">
-      Without it, start/finish photos come free from Wikimedia Commons. With a
-      key (Google Cloud Console &rarr; enable &ldquo;Street View Static API&rdquo;; restrict it to this
-      website&rsquo;s address) Street View pictures are used where Google has them. Stored only in this
-      browser; billing applies on your Google account.
-    </p>
     <div class="button-row">
       <button id="save-key-btn" class="primary-btn">Save</button>
       <button id="close-settings-btn" class="secondary-btn">Close</button>
@@ -243,8 +235,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.21"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.22"></script>
 
-<script type="module" src="js/main.js?v=1.2.21"></script>
+<script type="module" src="js/main.js?v=1.2.22"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.21";
-import { Planner, profileHint } from "./planner.js?v=1.2.21";
-import { renderStats } from "./stats.js?v=1.2.21";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.22";
+import { Planner, profileHint } from "./planner.js?v=1.2.22";
+import { renderStats } from "./stats.js?v=1.2.22";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,14 +9,12 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.21";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.21";
-import { findPhoto } from "./photos.js?v=1.2.21";
+} from "./share.js?v=1.2.22";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.22";
+import { findPhoto } from "./photos.js?v=1.2.22";
 import {
   getOrsKey,
   setOrsKey,
-  getGoogleKey,
-  setGoogleKey,
   PROFILE_LABELS,
   PROFILE_COLORS,
   WAYTYPE_STYLES,
@@ -25,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.21";
+} from "./config.js?v=1.2.22";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -38,7 +36,6 @@ const els = {
   profileHint: document.getElementById("profile-hint"),
   photosBtn: document.getElementById("photos-btn"),
   photosGrid: document.getElementById("photos-grid"),
-  googleKeyInput: document.getElementById("google-key-input"),
   saveRouteBtn: document.getElementById("save-route-btn"),
   newRouteBtn: document.getElementById("new-route-btn"),
   savedList: document.getElementById("saved-list"),
@@ -273,10 +270,9 @@ els.photosBtn.addEventListener("click", async () => {
   els.photosBtn.disabled = true;
   els.photosGrid.hidden = false;
   els.photosGrid.replaceChildren(Object.assign(document.createElement("div"), { className: "photo-empty tiny-hint", textContent: "Looking for photos..." }));
-  const key = getGoogleKey();
   const lookup = async (pt) => {
     try {
-      return { photo: await findPhoto(pt[0], pt[1], key) };
+      return { photo: await findPhoto(pt[0], pt[1]) };
     } catch (err) {
       return { error: err.message || String(err) };
     }
@@ -933,7 +929,6 @@ function renderColorLists() {
 
 function openSettings() {
   els.orsKeyInput.value = getOrsKey();
-  els.googleKeyInput.value = getGoogleKey();
   renderColorLists();
   els.settingsModal.hidden = false;
 }
@@ -941,7 +936,6 @@ els.settingsBtn.addEventListener("click", openSettings);
 els.closeSettingsBtn.addEventListener("click", () => (els.settingsModal.hidden = true));
 els.saveKeyBtn.addEventListener("click", () => {
   setOrsKey(els.orsKeyInput.value.trim());
-  setGoogleKey(els.googleKeyInput.value.trim());
   els.settingsModal.hidden = true;
   refreshProfileHint();
 });

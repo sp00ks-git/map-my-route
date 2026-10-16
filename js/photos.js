@@ -1,10 +1,11 @@
 // Photos of the start and finish of a route, shown on the page (nothing sends
-// the user away). Two sources:
-//   * Wikimedia Commons -- free, key-less, openly licensed photos geotagged near
-//     the point (lots of UK street scenes via Geograph). The default.
-//   * Google Street View Static API -- only if the owner has put their own
-//     Google API key in Settings (Google imagery is never free/key-less).
+// the user away). Both sources are free and need NO key or account:
+//   1. KartaView (open street-level imagery, ex-OpenStreetCam) -- photos taken
+//      from the road, often within a few metres of the point. Patchy outside towns.
+//   2. Wikimedia Commons -- openly licensed photos geotagged nearby (lots of UK
+//      street scenes via Geograph), used when KartaView has nothing close.
 
+const KARTAVIEW_API = "https://api.kartaview.org/2.0/photo/";
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const NEAR_M = 300;
 const FAR_M = 1500;
@@ -70,45 +71,50 @@ async function commonsPhoto(lat, lng, radiusM) {
   };
 }
 
-async function googlePhoto(lat, lng, key) {
-  const loc = `${lat},${lng}`;
-  const meta = await fetch(
-    `https://maps.googleapis.com/maps/api/streetview/metadata?location=${loc}&radius=100&source=outdoor&key=${encodeURIComponent(key)}`,
-    { signal: AbortSignal.timeout(10000) }
-  ).then((r) => r.json());
-  if (meta.status !== "OK") {
-    if (meta.status === "ZERO_RESULTS") return null;
-    throw new Error(meta.error_message || `Google Street View: ${meta.status}`);
-  }
+async function kartaviewPhoto(lat, lng, radiusM) {
+  const url = `${KARTAVIEW_API}?lat=${lat}&lng=${lng}&radius=${radiusM}&itemsPerPage=10`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`KartaView returned ${res.status}`);
+  const rows = (await res.json()).result?.data || [];
+  const best = rows
+    .filter((r) => r.autoImgProcessingStatus === "FINISHED" && (r.fileurlLTh || r.fileurlProc))
+    .map((r) => ({ r, distanceM: haversineM(lat, lng, Number(r.lat), Number(r.lng)) }))
+    .sort((a, b) => a.distanceM - b.distanceM)[0];
+  if (!best) return null;
+  const when = best.r.shotDate ? new Date(best.r.shotDate.replace(" ", "T")) : null;
   return {
-    source: "Google Street View",
-    src: `https://maps.googleapis.com/maps/api/streetview?size=480x300&location=${loc}&radius=100&source=outdoor&key=${encodeURIComponent(key)}`,
-    title: "Street-level view",
-    distanceM: meta.location ? haversineM(lat, lng, meta.location.lat, meta.location.lng) : 0,
-    credit: "© Google",
+    source: "KartaView",
+    src: best.r.fileurlLTh || best.r.fileurlProc,
+    title: when && !Number.isNaN(when.getTime()) ? `Street-level photo, ${when.getFullYear()}` : "Street-level photo",
+    distanceM: best.distanceM,
+    credit: "contributors, CC BY-SA 4.0",
     pageUrl: null,
   };
 }
 
 /**
- * Best photo near a point, or null. Uses Google if a key is supplied (falling
- * back to Commons when Google has nothing), otherwise Commons: first within
- * ~300 m, then widening to ~1.5 km. Throws only if every source errored.
+ * Best photo near a point, or null: KartaView street-level first (within 50 m,
+ * then 200 m), then Wikimedia Commons (within ~300 m, then ~1.5 km). A source
+ * that errors is skipped; throws only if every source errored.
  */
-export async function findPhoto(lat, lng, googleKey = "") {
+export async function findPhoto(lat, lng) {
+  const attempts = [
+    () => kartaviewPhoto(lat, lng, 50),
+    () => kartaviewPhoto(lat, lng, 200),
+    () => commonsPhoto(lat, lng, NEAR_M),
+    () => commonsPhoto(lat, lng, FAR_M),
+  ];
+  let errors = 0;
   let lastError = null;
-  if (googleKey) {
+  for (const attempt of attempts) {
     try {
-      const g = await googlePhoto(lat, lng, googleKey);
-      if (g) return g;
+      const photo = await attempt();
+      if (photo) return photo;
     } catch (err) {
+      errors++;
       lastError = err;
     }
   }
-  try {
-    return (await commonsPhoto(lat, lng, NEAR_M)) || (await commonsPhoto(lat, lng, FAR_M));
-  } catch (err) {
-    if (lastError) throw lastError;
-    throw err;
-  }
+  if (errors === attempts.length) throw lastError;
+  return null;
 }

@@ -11,7 +11,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 ## Removals / changes
 
 4. ~~Remove Street View~~ — DONE v1.2.17 (button, handler and import removed; the now-unused `js/streetview.js` file was left in place because deleting files under /var is blocked by policy — delete it when you're happy).
-5. ~~Start/finish photos~~ — DONE v1.2.20 (Wikimedia Commons; Google Street View is wired up but UNTESTED until a Google key is entered in Settings).
+5. ~~Start/finish photos~~ — DONE v1.2.20, switched to key-less KartaView + Wikimedia Commons in v1.2.22. Google dropped (needs an API key).
 
 ## New features
 
@@ -26,6 +26,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.22: start/finish photos now use KartaView street-level imagery first (free, no key; photos taken from the road, often within metres) and fall back to Wikimedia Commons. The Google Street View code and Settings key field were removed. Mapillary was ruled out (needs a token).
 
 - v1.2.21: README rewritten to match the app (was describing Leaflet/html2canvas/TinyURL); stats show "<1 min"; smaller location-blocked pop-up on phones.
 
