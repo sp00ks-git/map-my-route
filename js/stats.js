@@ -47,7 +47,7 @@ export function renderStats(result, els) {
 
   if (!result.classified) {
     const li = document.createElement("li");
-    li.innerHTML = `<span class="breakdown-value tiny-hint">Add a free ORS API key for road / track / footway / cycleway detail.</span>`;
+    li.innerHTML = `<span class="breakdown-value tiny-hint">Couldn't look up road/path types for this route (very long route, or OpenStreetMap lookup unreachable right now).</span>`;
     els.waytypeBreakdown.appendChild(li);
   }
 }

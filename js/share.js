@@ -108,14 +108,6 @@ export async function tryShorten(longUrl) {
   return text;
 }
 
-export async function screenshotMap(mapContainerEl) {
-  const canvas = await html2canvas(mapContainerEl, {
-    useCORS: true,
-    logging: false,
-  });
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-}
-
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

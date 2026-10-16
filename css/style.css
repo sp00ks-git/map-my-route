@@ -13,12 +13,46 @@
 
 * { box-sizing: border-box; }
 
+/* [hidden] must always win, even over an equally-specific class rule that
+   also sets `display` (e.g. .geo-status/.view are display:flex/block) --
+   otherwise toggling the `hidden` attribute in JS silently does nothing. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  touch-action: manipulation; /* kills the 300ms tap delay without blocking pinch-zoom */
+  overflow: hidden; /* the app is a fixed-height single screen, not a scrolling page */
+}
+
+.geo-status {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000; /* above any map canvas/controls in either view */
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-size: 0.85rem;
+  max-width: min(90vw, 480px);
+}
+.geo-status-btn {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  flex: none;
+  white-space: nowrap;
 }
 
 .app-header {
@@ -26,9 +60,12 @@ html, body {
   align-items: center;
   gap: 16px;
   padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   height: 56px;
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .brand {
@@ -38,8 +75,19 @@ html, body {
   font-weight: 700;
   font-size: 1.1rem;
   margin-right: auto;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
+.brand:hover { opacity: 0.85; }
 .brand-mark { font-size: 1.3rem; }
+.app-version {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
 
 .mode-toggle {
   display: flex;
@@ -52,7 +100,8 @@ html, body {
   border: none;
   background: transparent;
   color: var(--text-dim);
-  padding: 8px 16px;
+  padding: 10px 16px;
+  min-height: 40px;
   border-radius: 999px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -114,6 +163,7 @@ html, body {
   color: white;
   border: none;
   padding: 10px 18px;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 0.95rem;
   cursor: pointer;
@@ -125,6 +175,7 @@ html, body {
   color: var(--text);
   border: 1px solid var(--border);
   padding: 8px 14px;
+  min-height: 44px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -148,9 +199,162 @@ html, body {
   height: 100%;
 }
 
+.map-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .planner-map {
   width: 100%;
   height: 100%;
+}
+
+.map-search {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  width: min(90vw, 420px);
+  display: flex;
+  gap: 6px;
+}
+.search-field {
+  position: relative;
+  width: 100%;
+}
+.search-field input {
+  margin-bottom: 0;
+  padding-right: 52px;
+  background: var(--panel-2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+.search-field .secondary-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.search-field .secondary-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border: none;
+}
+
+.place-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.place-search-results li {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.place-search-results li:hover,
+.place-search-results li:focus {
+  background: var(--panel);
+}
+
+.map-controls {
+  position: absolute;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.map-fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+.map-fab:hover { border-color: var(--accent); }
+.map-fab.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: white;
+}
+
+.pan-controls {
+  position: absolute;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 500;
+  display: grid;
+  grid-template-columns: 40px 40px 40px;
+  grid-template-rows: 40px 40px 40px;
+  gap: 2px;
+}
+.pan-up { grid-area: 1 / 2; }
+.pan-left { grid-area: 2 / 1; }
+.pan-right { grid-area: 2 / 3; }
+.pan-down { grid-area: 3 / 2; }
+.pan-controls .map-fab {
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
+}
+
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.color-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.color-swatches button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  padding: 0;
 }
 
 .sidebar {
@@ -192,8 +396,9 @@ select, input[type="text"] {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 0.9rem;
+  padding: 10px;
+  min-height: 44px;
+  font-size: 1rem; /* 16px+ stops iOS Safari auto-zooming into the field on focus */
   margin-bottom: 8px;
 }
 
@@ -270,6 +475,8 @@ select, input[type="text"] {
   padding: 24px;
   width: 420px;
   max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 .modal h2 { margin-top: 0; }
 .modal a { color: var(--accent); }
@@ -278,13 +485,78 @@ select, input[type="text"] {
   font-size: 0.85rem;
 }
 
+.color-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.color-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.85rem;
+}
+.color-list input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  flex: none;
+}
+
 @media (max-width: 820px) {
+  .app-header {
+    height: auto;
+    padding: 8px 12px;
+  }
+  .brand { font-size: 1rem; }
+  .mode-toggle { order: 3; width: 100%; justify-content: center; }
+  .icon-btn { padding: 8px 10px; min-height: 40px; }
+
+  .app-main { height: calc(100% - 92px); }
+
   .planner-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 60% 40%;
+    grid-template-rows: 80% 20%;
   }
   .sidebar {
     border-left: none;
     border-top: 1px solid var(--border);
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
+  .sidebar-block h2 { font-size: 0.95rem; }
+  .button-row { flex-wrap: wrap; }
+  .button-row .secondary-btn,
+  .button-row .primary-btn { flex: 1 1 auto; min-width: 44%; }
+
+  .map-search {
+    top: 12px;
+    left: 12px;
+    right: 64px;
+    transform: none;
+    width: auto;
+  }
+
+  .floating-btn {
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    top: auto;
+  }
+  .globe-hint {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    max-width: 90vw;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .planner-layout { grid-template-rows: 76% 24%; }
+  .button-row .secondary-btn,
+  .button-row .primary-btn { min-width: 100%; }
 }

@@ -2,23 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Map My Route</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
+<!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
+     whole app dead (maplibregl undefined killed every button handler). -->
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.6" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 <header class="app-header">
-  <div class="brand">
+  <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-  </div>
+    <span class="app-version">v1.2.6</span>
+  </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
-    <button id="mode-globe" class="mode-btn active" role="tab" aria-selected="true">Globe</button>
-    <button id="mode-planner" class="mode-btn" role="tab" aria-selected="false">Route Planner</button>
+    <button id="mode-globe" class="mode-btn" role="tab" aria-selected="false">Globe</button>
+  <button id="mode-planner" class="mode-btn active" role="tab" aria-selected="true">Route Planner</button>
   </div>
 
   <button id="settings-btn" class="icon-btn" title="Settings (API key)">&#9881;&#65039; Settings</button>
@@ -26,8 +28,14 @@
 
 <main class="app-main">
 
+  <div id="geo-status" class="geo-status" hidden>
+    <span id="geo-status-text"></span>
+    <button id="geo-retry-btn" class="secondary-btn geo-status-btn">Try again</button>
+    <button id="geo-dismiss-btn" class="secondary-btn geo-status-btn">Dismiss</button>
+  </div>
+
   <!-- GLOBE VIEW -->
-  <section id="view-globe" class="view active">
+  <section id="view-globe" class="view">
     <div id="globe-map" class="full-map"></div>
     <div class="globe-hint">
       Drag to spin the globe, scroll to zoom. Free and open &mdash; no API key, no Google.
@@ -36,9 +44,36 @@
   </section>
 
   <!-- PLANNER VIEW -->
-  <section id="view-planner" class="view">
+  <section id="view-planner" class="view active">
     <div class="planner-layout">
-      <div id="planner-map" class="planner-map"></div>
+      <div class="map-wrap">
+        <div id="planner-map" class="planner-map"></div>
+
+        <div class="map-search">
+          <div class="search-field">
+            <input id="place-search-input" type="text" placeholder="Search a place, postcode, or address..." autocomplete="off" />
+            <button id="place-search-btn" class="secondary-btn" title="Search" aria-label="Search">&#128269;</button>
+          </div>
+          <ul id="place-search-results" class="place-search-results" hidden></ul>
+        </div>
+
+        <div class="map-controls">
+          <div class="color-picker">
+            <div id="color-swatches" class="color-swatches" hidden></div>
+            <button id="color-picker-btn" class="map-fab" title="Route color"><span id="color-picker-dot" class="color-dot"></span></button>
+          </div>
+          <button id="draw-mode-btn" class="map-fab" title="Toggle draw mode">&#9997;&#65039;</button>
+          <button id="undo-fab-btn" class="map-fab" title="Undo last point">&#8630;</button>
+          <button id="reset-fab-btn" class="map-fab" title="Reset route">&#10005;</button>
+        </div>
+
+        <div class="pan-controls">
+          <button id="pan-up-btn" class="map-fab pan-up" title="Pan up">&#8593;</button>
+          <button id="pan-left-btn" class="map-fab pan-left" title="Pan left">&#8592;</button>
+          <button id="pan-right-btn" class="map-fab pan-right" title="Pan right">&#8594;</button>
+          <button id="pan-down-btn" class="map-fab pan-down" title="Pan down">&#8595;</button>
+        </div>
+      </div>
 
       <aside class="sidebar">
         <div class="sidebar-block">
@@ -49,6 +84,7 @@
             <option value="foot-walking">Walking</option>
             <option value="foot-hiking">Hiking</option>
             <option value="cycling-regular">Cycling</option>
+            <option value="dog-walking">Dog walk</option>
           </select>
 
           <p class="hint" id="profile-hint"></p>
@@ -57,7 +93,6 @@
             <button id="undo-point-btn" class="secondary-btn" disabled>Undo point</button>
             <button id="clear-route-btn" class="secondary-btn" disabled>Clear</button>
           </div>
-          <p class="tiny-hint">Click the map to place a start point, then keep clicking to route from A to B (and beyond) &mdash; the line locks to the nearest road or path.</p>
         </div>
 
         <div class="sidebar-block" id="stats-block" hidden>
@@ -105,27 +140,35 @@
   <div class="modal">
     <h2>Settings</h2>
     <p>
-      Driving directions work out of the box using the free
-      <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM demo server</a>.
-      To unlock <strong>walking, hiking and cycling</strong> routes plus automatic
-      road / track / footpath / cycleway coloring, add a free
-      <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">openrouteservice</a>
-      API key (free tier, no credit card).
+      Everything works out of the box, free, with no account needed: driving,
+      walking, hiking, cycling and dog-walking routes, all snapped to the real
+      road/footpath/bridleway/cycleway network and colored by path type.
     </p>
-    <label class="field-label" for="ors-key-input">openrouteservice API key</label>
-    <input id="ors-key-input" type="text" placeholder="Paste your free ORS API key here" />
+    <p class="tiny-hint">
+      Optional: adding a free
+      <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">openrouteservice</a>
+      API key additionally gives elevation gain/loss on your routes. Not required for anything else.
+    </p>
+    <label class="field-label" for="ors-key-input">openrouteservice API key (optional)</label>
+    <input id="ors-key-input" type="text" placeholder="Only needed for elevation data" />
     <p class="tiny-hint">Stored only in this browser (localStorage). Never sent anywhere except openrouteservice.org.</p>
     <div class="button-row">
       <button id="save-key-btn" class="primary-btn">Save</button>
       <button id="close-settings-btn" class="secondary-btn">Close</button>
     </div>
+
+    <h2>Route colors</h2>
+    <p class="tiny-hint">Customize the color used for each travel mode (no ORS key) and each road/path type (with an ORS key).</p>
+    <h3>By travel mode</h3>
+    <ul id="profile-color-list" class="color-list"></ul>
+    <h3>By road/path type (ORS)</h3>
+    <ul id="waytype-color-list" class="color-list"></ul>
+    <button id="reset-colors-btn" class="link-btn">Reset all colors to default</button>
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.6"></script>
 
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v=1.2.6"></script>
 </body>
 </html>

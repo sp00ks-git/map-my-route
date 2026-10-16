@@ -14,7 +14,53 @@
 //   classified: boolean,                // false = plain OSRM route, no road-type info
 // }
 
-import { OSRM_DEMO_URL, ORS_BASE_URL, WAYTYPE_STYLES, DEFAULT_ROUTE_COLOR } from "./config.js";
+import {
+  OSRM_DEMO_URL,
+  OSRM_FOOT_URL,
+  OSRM_BIKE_URL,
+  ORS_BASE_URL,
+  WAYTYPE_STYLES,
+  DEFAULT_ROUTE_COLOR,
+  PROFILE_LABELS,
+  getWaytypeColor,
+  getProfileColor,
+} from "./config.js?v=1.2.6";
+import { classifyRoute } from "./waytype.js?v=1.2.6";
+
+/** Turn a set of [fromIndex, toIndex, waytypeId] ranges (ORS's own shape, or
+ *  our own free OSM-based classifier's output) into rendered segments +
+ *  a distance breakdown, using the user's customizable waytype colors. */
+export function buildSegmentsFromRanges(coords, ranges) {
+  const segments = [];
+  const totalsByType = new Map();
+  for (const [from, to, typeId] of ranges) {
+    const segCoords = coords.slice(from, to + 1);
+    if (segCoords.length < 2) continue;
+    const distanceM = pathLengthM(segCoords);
+    const style = WAYTYPE_STYLES[typeId] || WAYTYPE_STYLES[0];
+    segments.push({ coords: segCoords, waytypeId: typeId, label: style.label, color: getWaytypeColor(typeId), distanceM });
+    totalsByType.set(typeId, (totalsByType.get(typeId) || 0) + distanceM);
+  }
+  const breakdown = [...totalsByType.entries()]
+    .map(([typeId, distanceM]) => {
+      const style = WAYTYPE_STYLES[typeId] || WAYTYPE_STYLES[0];
+      return { waytypeId: typeId, label: style.label, color: getWaytypeColor(typeId), distanceM };
+    })
+    .sort((a, b) => b.distanceM - a.distanceM);
+  return { segments, breakdown };
+}
+
+// "dog-walking" is a UI label, not a real routing network -- it rides on the
+// same foot/path network as walking. hiking also just uses the foot network
+// on the free keyless backends (only ORS distinguishes foot-walking vs
+// foot-hiking as separate profiles).
+const OSRM_PROFILE_URL = {
+  "driving-car": OSRM_DEMO_URL,
+  "foot-walking": OSRM_FOOT_URL,
+  "foot-hiking": OSRM_FOOT_URL,
+  "dog-walking": OSRM_FOOT_URL,
+  "cycling-regular": OSRM_BIKE_URL,
+};
 
 function haversineM(a, b) {
   const R = 6371000;
@@ -47,38 +93,107 @@ async function fetchWithRetry(url, options, retries = 1) {
   }
 }
 
-/** Fetch a route with no road-type classification, via the free OSRM demo
- *  server (driving only -- that's all the public demo instance routes). */
-async function routeWithOSRM(waypoints) {
+/** A normal OSRM route between deliberately-placed points -- finds the
+ *  engine's own best path between them. This is ONLY used for tap-to-tap
+ *  legs (get me from this tapped point to that one); finger-DRAWN strokes
+ *  never touch OSRM at all -- they're traced along the real road network
+ *  client-side (see waytype.buildTraceGeometry) precisely so the engine's
+ *  gap-filling can't make the line wander off the road you drew. */
+async function fetchOSRMRoute(baseUrl, waypoints) {
   const coordStr = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(";");
-  const url = `${OSRM_DEMO_URL}/${coordStr}?overview=full&geometries=geojson`;
+  const url = `${baseUrl}/${coordStr}?overview=full&geometries=geojson`;
   const res = await fetchWithRetry(url);
-  if (!res.ok) throw new Error(`OSRM request failed (${res.status})`);
+  if (!res.ok) throw new Error(`Routing request failed (${res.status})`);
   const data = await res.json();
   if (data.code !== "Ok" || !data.routes?.length) {
     throw new Error(data.message || "No route found between those points");
   }
   const route = data.routes[0];
-  const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  return { coords: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]), distanceM: route.distance, durationS: route.duration };
+}
 
+async function fetchOSRMMatch(baseUrl, points) {
+  const matchBase = baseUrl.replace("/route/v1/", "/match/v1/");
+  const coordStr = points.map(([lat, lng]) => `${lng},${lat}`).join(";");
+  const radiuses = points.map(() => 100).join(";");
+  const url = `${matchBase}/${coordStr}?overview=full&geometries=geojson&tidy=true&radiuses=${radiuses}`;
+  const res = await fetchWithRetry(url);
+  if (!res.ok) throw new Error(`Map matching failed (${res.status})`);
+  const data = await res.json();
+  if (data.code !== "Ok" || !data.matchings?.length) {
+    throw new Error(data.message || "No mapped road matched the gesture");
+  }
+  const match = data.matchings[0];
+  return { coords: match.geometry.coordinates.map(([lng, lat]) => [lat, lng]), distanceM: match.distance, durationS: match.duration };
+}
+
+/** Match a freehand gesture against the routing engine's road graph. This
+ * is preferred to independently snapping every finger sample because the
+ * engine can choose one connected road sequence across junctions and bends.
+ */
+export async function matchGesture(profile, points, orsApiKey = "") {
+  if (orsApiKey || points.length < 2) return getRoute(profile, points, orsApiKey);
+  const baseUrl = OSRM_PROFILE_URL[profile] || OSRM_DEMO_URL;
+  try {
+    const { coords, distanceM, durationS } = await fetchOSRMMatch(baseUrl, points);
+    const color = getProfileColor(profile);
+    const label = PROFILE_LABELS[profile] || "Route";
+    return {
+      coords,
+      distanceM,
+      durationS,
+      ascentM: null,
+      descentM: null,
+      segments: [{ coords, waytypeId: null, label, color, distanceM }],
+      breakdown: [{ waytypeId: null, label, color, distanceM }],
+      classified: false,
+    };
+  } catch (err) {
+    console.warn("OSRM map matching failed; falling back to waypoint routing:", err);
+    return routeWithOSRM(profile, points, null, null);
+  }
+}
+
+/** Fetch a route via a free key-less OSRM instance -- the public
+ *  project-osrm.org demo (driving only) or FOSSGIS's routed-foot/routed-bike
+ *  mirrors (walking/hiking/dog-walking/cycling). OSRM's own response has no
+ *  road-type info, so we separately (and for free) ask OpenStreetMap itself,
+ *  via Overpass, what each stretch of the route actually is -- footway,
+ *  bridleway, cycleway, track, road -- so this works exactly like the ORS
+ *  path below, no API key required. If that classification isn't possible
+ *  (huge route, Overpass unreachable) it falls back to one color for the
+ *  whole route, picked by travel profile so different modes stay distinct. */
+async function routeWithOSRM(profile, waypoints, cachedWays, cachedBounds) {
+  const baseUrl = OSRM_PROFILE_URL[profile] || OSRM_DEMO_URL;
+  const { coords, distanceM, durationS } = await fetchOSRMRoute(baseUrl, waypoints);
+
+  let ranges = null;
+  if (cachedWays?.length) {
+    try {
+      // Reuses the planner's already-loaded local road network when it covers
+      // this route, instead of firing a second, redundant Overpass query --
+      // that duplicate round-trip was the multi-second "hang" after drawing.
+      ranges = await classifyRoute(coords, cachedWays, cachedBounds);
+    } catch (err) {
+      console.error("Free OSM waytype classification failed, showing a single color instead:", err);
+    }
+  }
+
+  if (ranges?.length) {
+    const { segments, breakdown } = buildSegmentsFromRanges(coords, ranges);
+    return { coords, distanceM, durationS, ascentM: null, descentM: null, segments, breakdown, classified: true };
+  }
+
+  const color = getProfileColor(profile);
+  const label = PROFILE_LABELS[profile] || "Route";
   return {
     coords,
-    distanceM: route.distance,
-    durationS: route.duration,
+    distanceM,
+    durationS,
     ascentM: null,
     descentM: null,
-    segments: [
-      {
-        coords,
-        waytypeId: null,
-        label: "Road (unclassified)",
-        color: DEFAULT_ROUTE_COLOR,
-        distanceM: route.distance,
-      },
-    ],
-    breakdown: [
-      { waytypeId: null, label: "Road (unclassified)", color: DEFAULT_ROUTE_COLOR, distanceM: route.distance },
-    ],
+    segments: [{ coords, waytypeId: null, label, color, distanceM }],
+    breakdown: [{ waytypeId: null, label, color, distanceM }],
     classified: false,
   };
 }
@@ -87,7 +202,9 @@ async function routeWithOSRM(waypoints) {
  *  profiles and returns extra_info so we can color each stretch of the route
  *  by road/track/footway/cycleway/steps. Requires the user's own free API key. */
 async function routeWithORS(profile, waypoints, apiKey) {
-  const url = `${ORS_BASE_URL}/${profile}/geojson`;
+  // ORS has no "dog-walking" profile -- it's a UI label for the foot network.
+  const orsProfile = profile === "dog-walking" ? "foot-walking" : profile;
+  const url = `${ORS_BASE_URL}/${orsProfile}/geojson`;
   const body = {
     coordinates: waypoints.map(([lat, lng]) => [lng, lat]),
     extra_info: ["waytype", "surface"],
@@ -132,30 +249,15 @@ async function routeWithORS(profile, waypoints, apiKey) {
 
   const waytypeRanges = props.extras?.waytype?.values || [];
 
-  const segments = [];
-  const totalsByType = new Map();
-
+  let segments, breakdown;
   if (waytypeRanges.length) {
-    for (const [from, to, typeId] of waytypeRanges) {
-      const segCoords = coords.slice(from, to + 1);
-      if (segCoords.length < 2) continue;
-      const distanceM = pathLengthM(segCoords);
-      const style = WAYTYPE_STYLES[typeId] || WAYTYPE_STYLES[0];
-      segments.push({ coords: segCoords, waytypeId: typeId, label: style.label, color: style.color, distanceM });
-      totalsByType.set(typeId, (totalsByType.get(typeId) || 0) + distanceM);
-    }
+    ({ segments, breakdown } = buildSegmentsFromRanges(coords, waytypeRanges));
   } else {
     // Some profiles/instances omit extras entirely -- still show the route.
-    segments.push({ coords, waytypeId: null, label: "Route", color: DEFAULT_ROUTE_COLOR, distanceM: summary.distance });
-    totalsByType.set(null, summary.distance);
+    const color = getProfileColor(profile);
+    segments = [{ coords, waytypeId: null, label: "Route", color, distanceM: summary.distance }];
+    breakdown = [{ waytypeId: null, label: "Route", color, distanceM: summary.distance }];
   }
-
-  const breakdown = [...totalsByType.entries()]
-    .map(([typeId, distanceM]) => {
-      const style = typeId === null ? { label: "Route", color: DEFAULT_ROUTE_COLOR } : WAYTYPE_STYLES[typeId] || WAYTYPE_STYLES[0];
-      return { waytypeId: typeId, label: style.label, color: style.color, distanceM };
-    })
-    .sort((a, b) => b.distanceM - a.distanceM);
 
   return {
     coords,
@@ -170,21 +272,18 @@ async function routeWithORS(profile, waypoints, apiKey) {
 }
 
 /**
- * Get a route between 2+ waypoints ([lat,lng] pairs), snapped to roads.
- * Falls back to the free, key-less OSRM demo (driving-only, no road-type
- * coloring) whenever no openrouteservice API key is configured, or the
- * chosen profile isn't "driving-car".
+ * Get a route between 2+ waypoints ([lat,lng] pairs), snapped to roads/paths.
+ * With an openrouteservice API key configured, every profile gets full
+ * road/track/footway/cycleway/steps coloring. Without one, every profile
+ * still works and still snaps to the real road/foot/cycle network (via free
+ * key-less OSRM instances) -- just as a single color per travel mode instead
+ * of a full waytype breakdown.
  */
-export async function getRoute(profile, waypoints, orsApiKey) {
+export async function getRoute(profile, waypoints, orsApiKey, cachedWays, cachedBounds) {
   if (waypoints.length < 2) throw new Error("Need at least two points");
 
   if (orsApiKey) {
     return routeWithORS(profile, waypoints, orsApiKey);
   }
-  if (profile !== "driving-car") {
-    throw new Error(
-      "Walking, hiking and cycling routing need a free openrouteservice API key -- add one in Settings, or switch to Driving."
-    );
-  }
-  return routeWithOSRM(waypoints);
+  return routeWithOSRM(profile, waypoints, cachedWays, cachedBounds);
 }

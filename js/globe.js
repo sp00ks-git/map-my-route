@@ -1,11 +1,12 @@
-// Free, open, keyless 3D globe view using MapLibre GL JS (open-source fork of
-// Mapbox GL) with MapLibre's own public demo vector tiles -- no Google, no
-// API key, no account.
+// Free, open, keyless 3D globe view using MapLibre GL JS (open-source fork
+// of Mapbox GL). Same OpenFreeMap "Bright" vector tiles as the route
+// planner -- a real Google-Maps-like road map that stays readable as you
+// zoom in from space -- no API key, no account.
 
 export function initGlobe(containerId) {
   const map = new maplibregl.Map({
     container: containerId,
-    style: "https://demotiles.maplibre.org/style.json",
+    style: "https://tiles.openfreemap.org/styles/bright",
     center: [-1.5, 52.5], // UK-ish default; the user can pan anywhere
     zoom: 1.5,
     attributionControl: true,

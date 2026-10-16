@@ -6,8 +6,8 @@ started.
 
 ## What it does
 
-- **Globe view** -- a free, spinnable 3D globe (MapLibre GL JS + MapLibre's
-  open demo tiles). No Google Earth, no API key.
+- **Globe view** -- a free, spinnable 3D globe (MapLibre GL JS + OpenFreeMap
+  vector tiles). No Google Earth, no API key.
 - **Route Planner** -- a "birds-eye" 2D map (Leaflet). Click to drop a start
   point, keep clicking to route on to the finish (and anywhere in between).
   The line snaps to the real road/path network -- it's not a freehand
@@ -85,7 +85,7 @@ person planning routes, the free tier is normally more than enough.
   page elements, still capture fine) -- if you hit a blank/partial
   capture, use your OS's own screenshot tool instead; there's a note for
   this in the UI.
-- All map data: &copy; OpenStreetMap contributors. Basemap tiles: OSM and
-  Esri. Globe tiles: MapLibre demo tiles. Routing: OSRM and
-  openrouteservice. Street-level imagery: Mapillary. None of these are
-  Google products.
+- All map data: &copy; OpenStreetMap contributors. Basemap: OpenFreeMap
+  "Bright" vector style (a free, keyless, Google-Maps-like rendering of
+  OpenMapTiles-schema vector tiles). Routing: OSRM and openrouteservice.
+  Street-level imagery: Mapillary. None of these are Google products.
