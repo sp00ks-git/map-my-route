@@ -296,6 +296,106 @@ function insertWayVertices(push, way, segStart, segEnd) {
 
 export { pathLengthM };
 
+/**
+ * Shortest road-following path between two points over the loaded way
+ * geometry -- no routing API, so it is instant and works offline of OSRM.
+ * Used to JOIN a new drawn stroke onto the end of the route so far: the user
+ * lifts off (to pan/zoom past the controls, or just by imprecision) and
+ * starts again a little way along the road; the gap is filled by following the
+ * actual road, not a straight chord, and not as a separate "new" path.
+ *
+ * Graph: every way vertex is a node (vertices within JOIN_TOL_M of each other
+ * are the same node, so ways meet at junctions even if tile simplification
+ * left them a metre apart); edges join consecutive vertices. `from`/`to` are
+ * projected onto their nearest segment (<= maxSnapM) as virtual nodes.
+ * Returns [[lat,lng],...] or null if either end is off-network, or no
+ * connected path exists in the loaded data.
+ */
+const JOIN_TOL_M = 2.5;
+
+export function findNetworkPath(ways, from, to, { maxSnapM = 20, padM = 150 } = {}) {
+  const padDeg = padM / 111000;
+  const south = Math.min(from[0], to[0]) - padDeg, north = Math.max(from[0], to[0]) + padDeg;
+  const west = Math.min(from[1], to[1]) - padDeg * 1.7, east = Math.max(from[1], to[1]) + padDeg * 1.7;
+  const local = ways.filter((w) =>
+    w.points.some(([lat, lng]) => lat >= south && lat <= north && lng >= west && lng <= east));
+  if (!local.length) return null;
+
+  const a = snapToNearestWay(from, local, { maxM: maxSnapM });
+  const b = snapToNearestWay(to, local, { maxM: maxSnapM });
+  if (!a || !b) return null;
+
+  // Node table with ~JOIN_TOL_M merging via a spatial hash.
+  const cell = JOIN_TOL_M / 111000;
+  const nodes = []; // [lat,lng]
+  const grid = new Map();
+  const nodeAt = (lat, lng) => {
+    const cy = Math.floor(lat / cell), cx = Math.floor(lng / (cell * 1.6));
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        for (const id of grid.get(`${cy + dy},${cx + dx}`) || []) {
+          if (haversineM(nodes[id], [lat, lng]) <= JOIN_TOL_M) return id;
+        }
+      }
+    }
+    const id = nodes.length;
+    nodes.push([lat, lng]);
+    const k = `${cy},${cx}`;
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(id);
+    return id;
+  };
+
+  const adj = []; // adj[id] = [[otherId, meters], ...]
+  const link = (i, j) => {
+    if (i === j) return;
+    const m = haversineM(nodes[i], nodes[j]);
+    (adj[i] ||= []).push([j, m]);
+    (adj[j] ||= []).push([i, m]);
+  };
+  local.forEach((w) => {
+    let prev = nodeAt(w.points[0][0], w.points[0][1]);
+    for (let i = 1; i < w.points.length; i++) {
+      const cur = nodeAt(w.points[i][0], w.points[i][1]);
+      link(prev, cur);
+      prev = cur;
+    }
+  });
+
+  // Virtual start/end nodes sitting on their segments.
+  const virtual = (snap) => {
+    const way = local[snap.wayIndex];
+    const id = nodes.length;
+    nodes.push([snap.lat, snap.lng]);
+    link(id, nodeAt(way.points[snap.segmentIndex - 1][0], way.points[snap.segmentIndex - 1][1]));
+    link(id, nodeAt(way.points[snap.segmentIndex][0], way.points[snap.segmentIndex][1]));
+    return id;
+  };
+  const start = virtual(a);
+  const goal = virtual(b);
+  if (a.wayIndex === b.wayIndex && a.segmentIndex === b.segmentIndex) link(start, goal);
+
+  // Dijkstra (graph is a few hundred nodes -- an array scan is plenty).
+  const dist = new Array(nodes.length).fill(Infinity);
+  const prevNode = new Array(nodes.length).fill(-1);
+  const done = new Array(nodes.length).fill(false);
+  dist[start] = 0;
+  for (;;) {
+    let u = -1, best = Infinity;
+    for (let i = 0; i < nodes.length; i++) if (!done[i] && dist[i] < best) { best = dist[i]; u = i; }
+    if (u === -1 || u === goal) break;
+    done[u] = true;
+    for (const [v, m] of adj[u] || []) {
+      if (dist[u] + m < dist[v]) { dist[v] = dist[u] + m; prevNode[v] = u; }
+    }
+  }
+  if (!Number.isFinite(dist[goal])) return null;
+  const path = [];
+  for (let n = goal; n !== -1; n = prevNode[n]) path.push(nodes[n]);
+  return path.reverse();
+}
+
+
 /** Bounding box (as fetchWaysInBbox wants: [south, west, north, east]) for a
  *  MapLibre map's current view, padded so panning slightly while drawing
  *  doesn't immediately fall outside the cached network. */

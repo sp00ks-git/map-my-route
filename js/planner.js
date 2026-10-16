@@ -14,14 +14,22 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.7";
-import { getOrsKey, PROFILE_LABELS, getProfileColor } from "./config.js?v=1.2.7";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM } from "./waytype.js?v=1.2.7";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.8";
+import { getOrsKey, PROFILE_LABELS, getProfileColor } from "./config.js?v=1.2.8";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath } from "./waytype.js?v=1.2.8";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
 // uses the full gesture with the routing graph rather than refusing the draw.
 const MIN_SNAP_ZOOM = 3;
+
+// A new stroke that starts away from the end of the route so far is JOINED on
+// along the road network (see Planner._bridgeFromRouteEnd). Gaps beyond this
+// are left as a straight join; the detour allowance stops a wild "shortest
+// path" around a block being drawn for what was really a short hop.
+const MAX_BRIDGE_M = 400;
+const MIN_BRIDGE_M = 1.5;
+const MAX_NETWORK_CACHE = 8000;
 
 // Rough travel speeds (m/s) for estimating a drawn route's duration, since a
 // client-side trace has no routing engine to report one.
@@ -205,10 +213,41 @@ export class Planner {
         const key = [points.length, a[0].toFixed(7), a[1].toFixed(7), z[0].toFixed(7), z[1].toFixed(7)].join("|");
         if (seen.has(key)) continue;
         seen.add(key);
-        ways.push({ points, waytypeId: visibleRoadType(feature.properties) });
+        ways.push({ key, points, waytypeId: visibleRoadType(feature.properties) });
       }
     }
     return ways;
+  }
+
+  /** Keep roads from every view the user has visited (bounded, oldest first
+   *  out) so a new stroke can be joined to the route's end even after the map
+   *  was panned/zoomed away from it. Used only for joining -- live snapping
+   *  still uses just the current view (_roadWays), which stays fast. */
+  _rememberWays(ways) {
+    if (!this._networkCache) this._networkCache = new Map();
+    for (const way of ways) {
+      const key = way.key || `${way.points.length}|${way.points[0]}|${way.points[way.points.length - 1]}`;
+      this._networkCache.delete(key); // re-insert so recently seen ways are newest
+      this._networkCache.set(key, way);
+    }
+    while (this._networkCache.size > MAX_NETWORK_CACHE) {
+      this._networkCache.delete(this._networkCache.keys().next().value);
+    }
+  }
+
+  /** Road-following join from the end of the route so far to where a new
+   *  stroke starts, so drawing again after lifting (to pan past the controls,
+   *  or just a bit off the red dot) extends ONE route instead of leaving a
+   *  straight-line gap. Returns [] when there's nothing sensible to add. */
+  _bridgeFromRouteEnd(firstPoint) {
+    if (!this.legs.length || !this._networkCache?.size) return [];
+    const lastLeg = this.legs[this.legs.length - 1].coords;
+    const anchor = lastLeg[lastLeg.length - 1];
+    const gapM = pathLengthM([anchor, firstPoint]);
+    if (gapM < MIN_BRIDGE_M || gapM > MAX_BRIDGE_M) return [];
+    const path = findNetworkPath([...this._networkCache.values()], anchor, firstPoint);
+    if (!path || path.length < 2) return [];
+    return pathLengthM(path) <= Math.max(40, gapM * 3) ? path : [];
   }
 
   async _refreshRoadNetwork() {
@@ -220,6 +259,7 @@ export class Planner {
     // immediate, and cannot be rate-limited like an Overpass request.
     const visibleWays = this._collectVisibleRoadNetwork();
     if (visibleWays.length) {
+      this._rememberWays(visibleWays);
       this._roadWays = visibleWays;
       this._roadNetworkBbox = view;
       return;
@@ -232,6 +272,7 @@ export class Planner {
       try {
         const bbox = bboxFromMapBounds(b);
         this._roadWays = await fetchWaysInBbox(bbox);
+        this._rememberWays(this._roadWays);
         this._roadNetworkBbox = bbox;
       } catch (err) {
         console.error("Visible/vector road lookup and Overpass fallback failed:", err);
@@ -515,12 +556,14 @@ export class Planner {
   }
 
   _addTraceStroke(snapped) {
-    const coords = buildTraceGeometry(snapped, this._strokeWays);
-    if (coords.length < 2) {
+    const traced = buildTraceGeometry(snapped, this._strokeWays);
+    if (traced.length < 2) {
       this._handleTap([snapped[0].lat, snapped[0].lng]);
       return;
     }
     if (this.pendingStart && this.legs.length === 0) this.pendingStart = null;
+    // Part of the same leg, so Undo removes the stroke and its join together.
+    const coords = [...this._bridgeFromRouteEnd(traced[0]), ...traced];
     this.legs.push({ kind: "trace", coords });
     this._rebuild();
   }
