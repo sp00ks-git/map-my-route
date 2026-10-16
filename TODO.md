@@ -21,7 +21,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 ## Housekeeping
 
 8. Mobile layout: DONE in v1.2.16 (see Done). Remaining ideas: shrink the location-blocked toast on phones; show '<1 min' in the stats panel too (it says '0 min').
-9. `origin/main` is still at the first commit; the work lives on `live`. Decide whether to fast-forward `main`.
+9. ~~`origin/main` behind `live`~~ — fast-forwarded `main` to `live` (v1.2.21). Day-to-day work still happens on `live`.
 10. RULE: every update ships under a new version number (`./bump-version.sh`); the pre-commit hook enforces it.
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
