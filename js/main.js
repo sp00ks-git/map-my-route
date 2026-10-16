@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.23";
-import { Planner, profileHint } from "./planner.js?v=1.2.23";
-import { renderStats } from "./stats.js?v=1.2.23";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.26";
+import { Planner, profileHint } from "./planner.js?v=1.2.26";
+import { renderStats } from "./stats.js?v=1.2.26";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.23";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.23";
-import { findPhotos } from "./photos.js?v=1.2.23";
+} from "./share.js?v=1.2.26";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.26";
+import { findPhotos } from "./photos.js?v=1.2.26";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.23";
+} from "./config.js?v=1.2.26";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -578,23 +578,17 @@ renderSavedRoutes();
   const settingsBtn = document.getElementById("settings-btn");
   const coords = document.getElementById("map-coords");
   const search = document.querySelector(".map-search");
-  const mapWrap = document.querySelector(".map-wrap");
   const sheet = document.getElementById("route-sheet");
   const handle = document.getElementById("sheet-handle");
   const summary = document.getElementById("sheet-summary");
 
-  // On phones the lat/lng chip and the search box live in the header row, next
-  // to the Globe / Route tabs, instead of floating over (and hiding) the map.
-  const place = () => {
-    if (mq.matches) {
-      header.insertBefore(coords, settingsBtn);
-      header.insertBefore(search, settingsBtn);
-    } else {
-      const controls = mapWrap.querySelector(".map-controls");
-      mapWrap.insertBefore(coords, controls);
-      mapWrap.insertBefore(search, controls);
-      setSheet(false);
-    }
+  // The lat/lng chip and the search box live in the top bar on every screen
+  // size (next to the Globe / Route tabs), instead of floating over -- and
+  // hiding -- the map. CSS `order` arranges them per breakpoint.
+  header.insertBefore(coords, settingsBtn);
+  header.insertBefore(search, settingsBtn);
+  const onBreakpoint = () => {
+    if (!mq.matches) setSheet(false);
     planner.map.resize();
   };
 
@@ -622,8 +616,8 @@ renderSavedRoutes();
     summary.textContent = `${PROFILE_LABELS[planner.profile] || "Route"} \u00B7 ${km} \u00B7 ${time}`;
   };
 
-  mq.addEventListener("change", place);
-  place();
+  mq.addEventListener("change", onBreakpoint);
+  planner.map.resize();
 })();
 
 // Exposed for debugging/automated tests (console, Playwright). Not used by

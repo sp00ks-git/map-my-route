@@ -27,6 +27,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Done
 
+- v1.2.26: search box and live lat/lng moved off the map into the top bar on every screen size (brand | lat/lng | search ... tabs | settings; labels trim at ≤1180px; phones keep their compact row). Header no longer wraps. (v1.2.24/25 were intermediate builds of this.)
+
 - v1.2.23: start/finish photos are now mini thumbnails (up to 3 per end, nearest first) that open in an in-page viewer (arrows / Esc / click outside to close). No link back to KartaView anywhere; Commons photos keep a small licence/details link inside the viewer only.
 
 - v1.2.22: start/finish photos now use KartaView street-level imagery first (free, no key; photos taken from the road, often within metres) and fall back to Wikimedia Commons. The Google Street View code and Settings key field were removed. Mapillary was ruled out (needs a token).

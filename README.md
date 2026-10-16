@@ -14,7 +14,8 @@ Google account, no billing, no API keys needed. Live at
   also works (OSRM routing).
 - **One continuous route** -- lift off, pan/zoom, and start the next stroke
   anywhere near the end; the gap is joined along the road automatically.
-- **Live lat/lng** under the pointer (click it to copy).
+- **Top bar** -- the live lat/lng under the pointer (click to copy) and the place
+  search sit in the header, not over the map, so the whole map stays visible.
 - **Stats** -- distance, estimated time and a distance breakdown by road/path
   type, computed locally from the loaded map data.
 - **Saved routes** -- keep up to 5 routes while the page is open (in memory only,

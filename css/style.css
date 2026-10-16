@@ -57,6 +57,43 @@ html, body {
 
 .sheet-handle { display: none; }
 
+/* Top bar on wide screens: brand | lat/lng | search ............ tabs | settings.
+   (Phones re-arrange this in the max-width: 820px block below.) */
+.app-header { position: relative; z-index: 3000; } /* search results drop over the map */
+.app-header .map-coords {
+  position: static;
+  order: 1;
+  flex: none;
+  box-shadow: none;
+  background: var(--panel-2);
+}
+.app-header .map-search {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  order: 2;
+  flex: 0 1 440px;
+  width: auto;
+  min-width: 160px;
+}
+.app-header .search-field input { height: 38px; min-height: 38px; padding-top: 0; padding-bottom: 0; box-shadow: none; }
+.app-header .search-field .secondary-btn { top: 1px; height: 36px; }
+.app-header { flex-wrap: nowrap; gap: 12px; }
+.app-header .brand { margin-right: 6px; flex: none; }
+/* Medium widths: trim labels so lat/lng + search still fit on the one row. */
+@media (max-width: 1180px) {
+  .app-header .brand-name { display: none; }
+  .app-header .mode-btn-extra { display: none; }
+  .app-header .icon-btn { padding: 0; width: 38px; min-height: 38px; font-size: 1rem; }
+  .app-header .icon-btn-label { display: none; }
+}
+.app-header .mode-toggle { order: 3; margin-left: auto; }
+.app-header .icon-btn { order: 4; }
+body.globe-view .app-header .map-coords,
+body.globe-view .app-header .map-search { display: none; }
+
+
 .app-header {
   display: flex;
   align-items: center;
@@ -66,8 +103,7 @@ html, body {
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   height: 56px;
-  flex-wrap: wrap;
-  row-gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .brand {
@@ -693,7 +729,9 @@ select, input[type="text"] {
   .brand-mark { font-size: 1.15rem; }
   .app-version { font-size: 0.55rem; }
 
-  .mode-toggle { order: 0; width: auto; padding: 2px; gap: 2px; flex: none; }
+  .app-header .mode-toggle { order: 0; margin-left: 0; width: auto; padding: 2px; gap: 2px; flex: none; }
+  .app-header .map-coords, .app-header .map-search, .app-header .icon-btn { order: 0; }
+  .app-header .brand { margin-right: 0; }
   .mode-btn { padding: 5px 9px; min-height: 30px; font-size: 0.72rem; }
   .mode-btn-extra { display: none; }
 
