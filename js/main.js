@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.26";
-import { Planner, profileHint } from "./planner.js?v=1.2.26";
-import { renderStats } from "./stats.js?v=1.2.26";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.28";
+import { Planner, profileHint } from "./planner.js?v=1.2.28";
+import { renderStats } from "./stats.js?v=1.2.28";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.26";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.26";
-import { findPhotos } from "./photos.js?v=1.2.26";
+} from "./share.js?v=1.2.28";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.28";
+import { findPhotos } from "./photos.js?v=1.2.28";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.26";
+} from "./config.js?v=1.2.28";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -53,6 +53,7 @@ const els = {
 
   screenshotBtn: document.getElementById("screenshot-btn"),
   gpxBtn: document.getElementById("gpx-btn"),
+  whatsappBtn: document.getElementById("whatsapp-btn"),
   shareLink: document.getElementById("share-link"),
   copyLinkBtn: document.getElementById("copy-link-btn"),
   shortenBtn: document.getElementById("shorten-btn"),
@@ -920,6 +921,31 @@ els.screenshotBtn.addEventListener("click", async () => {
     console.error("Screenshot failed:", err);
     els.shareStatus.textContent = `Couldn't capture the map (${err.message || err}). Use your OS screenshot tool (Win+Shift+S / Cmd+Shift+4) instead.`;
   }
+});
+
+// Phones only (the button is hidden by CSS on wider screens): hand the route to
+// WhatsApp as a ready-to-send message with a short link. wa.me opens the
+// WhatsApp app (or WhatsApp Web if it isn't installed) with the chat picker.
+els.whatsappBtn.addEventListener("click", async () => {
+  const state = planner.getState();
+  if (!state.result || !els.shareLink.value) return;
+  els.whatsappBtn.disabled = true;
+  els.shareStatus.textContent = "Preparing your WhatsApp message...";
+  let link = els.shareLink.value;
+  const full = link.match(/#r=(.+)$/);
+  if (full) {
+    try {
+      link = await createShortLink(full[1]);
+      els.shareLink.value = link;
+    } catch (err) {
+      console.error("Short link for WhatsApp failed, sending the full link:", err);
+    }
+  }
+  const km = (state.result.distanceM / 1000).toFixed(2);
+  const text = `My ${PROFILE_LABELS[state.profile] || "route"} route, ${km} km -- open it on Map My Route:\n${link}`;
+  els.whatsappBtn.disabled = false;
+  els.shareStatus.textContent = "Opening WhatsApp...";
+  window.location.assign(`https://wa.me/?text=${encodeURIComponent(text)}`);
 });
 
 els.gpxBtn.addEventListener("click", async () => {

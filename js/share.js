@@ -91,6 +91,7 @@ export async function decodeRouteFromHash(hash) {
 
 export function buildShareUrl(hashPayload) {
   const url = new URL(window.location.href);
+  url.search = ""; // don't inherit ?s=<old id> / cache-busting params from the page we're on
   url.hash = `r=${hashPayload}`;
   return url.toString();
 }

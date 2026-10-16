@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.26" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.28" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.26";
+    var running = "1.2.28";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.26" />
+<link rel="stylesheet" href="css/style.css?v=1.2.28" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.26</span>
+    <span class="app-version">v1.2.28</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -161,6 +161,10 @@
           <div class="button-row wrap">
             <button id="screenshot-btn" class="secondary-btn">&#128247; Screenshot</button>
             <button id="gpx-btn" class="secondary-btn">&#11015;&#65039; Export GPX</button>
+            <button id="whatsapp-btn" class="secondary-btn whatsapp-btn" type="button">
+              <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M16.02 3C8.84 3 3.02 8.8 3.02 15.95c0 2.28.6 4.5 1.74 6.46L3 29l6.76-1.74a13 13 0 0 0 6.26 1.6h.01c7.17 0 13-5.8 13-12.95C29.03 8.8 23.2 3 16.02 3Zm0 23.64h-.01a10.7 10.7 0 0 1-5.45-1.49l-.39-.23-4.01 1.03 1.07-3.9-.25-.4a10.6 10.6 0 0 1-1.63-5.66c0-5.9 4.82-10.7 10.74-10.7 2.87 0 5.56 1.11 7.58 3.14a10.6 10.6 0 0 1 3.14 7.57c0 5.9-4.83 10.7-10.75 10.7Zm5.9-8c-.32-.16-1.91-.94-2.2-1.05-.3-.1-.51-.16-.73.16-.21.32-.83 1.05-1.02 1.26-.19.22-.37.24-.7.08-.32-.16-1.36-.5-2.59-1.6-.96-.85-1.6-1.9-1.79-2.22-.19-.32-.02-.5.14-.66.15-.14.32-.37.48-.56.16-.18.21-.32.32-.53.1-.22.05-.4-.03-.56-.08-.16-.73-1.75-1-2.4-.26-.63-.53-.54-.73-.55h-.62c-.21 0-.56.08-.85.4-.3.32-1.12 1.09-1.12 2.66 0 1.57 1.15 3.09 1.3 3.3.16.21 2.25 3.43 5.45 4.8.76.33 1.36.53 1.82.68.77.24 1.46.2 2.01.12.61-.09 1.91-.78 2.18-1.53.27-.75.27-1.4.19-1.53-.08-.13-.3-.21-.62-.37Z"/></svg>
+              <span>Share via WhatsApp</span>
+            </button>
           </div>
           <div class="photos-section">
             <button id="photos-btn" class="secondary-btn">&#128247; Photos of start &amp; finish</button>
@@ -235,8 +239,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.26"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.28"></script>
 
-<script type="module" src="js/main.js?v=1.2.26"></script>
+<script type="module" src="js/main.js?v=1.2.28"></script>
 </body>
 </html>

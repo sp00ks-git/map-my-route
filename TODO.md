@@ -34,6 +34,8 @@ Last updated 16-10-2026 (current version: v1.2.26). Every item below is done; th
 
 ## Done
 
+- v1.2.27: "Share via WhatsApp" button (phones only; hidden on wider screens). Makes a short link, then opens WhatsApp with a ready-to-send message (`My Driving route, 6.07 km -- open it on Map My Route:` + link) via wa.me. Full share links no longer inherit `?s=`/test params from the current page.
+
 - v1.2.26: search box and live lat/lng moved off the map into the top bar on every screen size (brand | lat/lng | search ... tabs | settings; labels trim at ≤1180px; phones keep their compact row). Header no longer wraps. (v1.2.24/25 were intermediate builds of this.)
 
 - v1.2.23: start/finish photos are now mini thumbnails (up to 3 per end, nearest first) that open in an in-page viewer (arrows / Esc / click outside to close). No link back to KartaView anywhere; Commons photos keep a small licence/details link inside the viewer only.
