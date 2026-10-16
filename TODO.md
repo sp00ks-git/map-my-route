@@ -19,7 +19,10 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 ## Removals / changes
 
 4. **Remove Street View** (button, `js/streetview.js`, its import in `js/main.js`).
-5. **Start/finish photos without leaving the site.** Needs a decision.
+5. **Start/finish photos without leaving the site.** User asked for Google Maps; needs a Google Cloud API key (see below).
+   - Plan: Google Street View Static API (`<img>` on our page, no redirect) with the free metadata check first so we only show a photo where coverage exists; Maps Static API thumbnail as fallback. Key must be created by the owner, billing enabled, and restricted to our domain by HTTP referrer (it is visible in the browser). Check current Google pricing/free tier before launch.
+   - If no key is supplied: fall back to Wikimedia Commons / Mapillary photos.
+   - Earlier notes:
    - Google imagery needs a paid API key and its terms forbid scraping, so not Google.
    - Free options: Wikimedia Commons geosearch (nearby photos), Mapillary image API, static map thumbnail as fallback.
    - Suggested: Wikimedia/Mapillary photo where one exists, map thumbnail otherwise; load on demand when the user clicks.
@@ -28,7 +31,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 6. **Save up to 5 routes** (in-memory only, lost on refresh — no accounts/storage).
    - Save current route, start a fresh one, switch back to any saved route.
-   - Open question: block or replace-oldest when saving a 6th? Rename/delete?
+   - DECIDED: saving a 6th route removes the oldest one, after an in-page confirmation popup (a styled modal, not a browser alert) saying which route will be dropped; user can cancel.
+   - Open: rename/delete for saved routes?
 7. **GPX export.**
    - Check the current export produces a valid file (untested).
    - Add a short "What's this?" next to the button: GPX is a standard route file; load it into Google Earth, Garmin, Komoot, OsmAnd or a phone GPS app to follow the route live. Include simple open-with steps for the common apps.
