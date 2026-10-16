@@ -499,7 +499,7 @@ select, input[type="text"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 4000; /* above the phone header (3000) and bottom sheet (1200) */
 }
 .modal-backdrop[hidden] { display: none; }
 
@@ -515,6 +515,56 @@ select, input[type="text"] {
 }
 .modal h2 { margin-top: 0; }
 .modal a { color: var(--accent); }
+
+.modal .modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.modal .modal-actions button { flex: 1 1 auto; }
+
+.saved-list {
+  list-style: none;
+  margin: 10px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.saved-list:empty { display: none; }
+.saved-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.saved-item.current { border-color: var(--accent); }
+.saved-load {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.saved-load:hover { background: var(--panel); }
+.saved-load small { display: block; color: var(--text-dim); font-size: 0.72rem; margin-top: 2px; }
+.saved-del {
+  width: 40px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.saved-del:hover { color: #ef4444; background: var(--panel); }
 
 .route-popup {
   font-size: 0.85rem;

@@ -21,10 +21,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## New features
 
-6. **Save up to 5 routes** (in-memory only, lost on refresh — no accounts/storage).
-   - Save current route, start a fresh one, switch back to any saved route.
-   - DECIDED: saving a 6th route removes the oldest one, after an in-page confirmation popup (a styled modal, not a browser alert) saying which route will be dropped; user can cancel.
-   - Open: rename/delete for saved routes?
+6. ~~Save up to 5 routes~~ — DONE v1.2.18 (see Done). Open idea: rename saved routes.
 7. **GPX export.**
    - Check the current export produces a valid file (untested).
    - Add a short "What's this?" next to the button: GPX is a standard route file; load it into Google Earth, Garmin, Komoot, OsmAnd or a phone GPS app to follow the route live. Include simple open-with steps for the common apps.
@@ -37,6 +34,9 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.18: Saved routes (max 5, in memory only): Save/Update, New route, open any saved route, delete. Saving a 6th shows a styled confirm popup naming the oldest route that will be removed. Unsaved changes prompt (Cancel / without saving / save first). Modal z-index raised above the phone header and sheet.
+- v1.2.17: Street View button removed.
 
 - v1.2.16: phone layout — one compact top row (tiny Globe/Route tabs, live lat/lng, search, settings gear; logo + version stacked at the left), and the Route panel is now a bottom sheet (tap the bar to open, tap the map or the bar to close; the collapsed bar shows `Driving · 140 m · <1 min`). Map is full height. Also fixed `Planner.whenReady()` so several callers can wait on it (only the last was released before).
 

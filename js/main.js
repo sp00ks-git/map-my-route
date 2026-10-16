@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.17";
-import { Planner, profileHint } from "./planner.js?v=1.2.17";
-import { renderStats } from "./stats.js?v=1.2.17";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.18";
+import { Planner, profileHint } from "./planner.js?v=1.2.18";
+import { renderStats } from "./stats.js?v=1.2.18";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,8 +9,8 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.17";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.17";
+} from "./share.js?v=1.2.18";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.18";
 import {
   getOrsKey,
   setOrsKey,
@@ -22,7 +22,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.17";
+} from "./config.js?v=1.2.18";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -33,6 +33,10 @@ const els = {
 
   profileSelect: document.getElementById("profile-select"),
   profileHint: document.getElementById("profile-hint"),
+  saveRouteBtn: document.getElementById("save-route-btn"),
+  newRouteBtn: document.getElementById("new-route-btn"),
+  savedList: document.getElementById("saved-list"),
+  savedCount: document.getElementById("saved-count"),
   undoBtn: document.getElementById("undo-point-btn"),
   clearBtn: document.getElementById("clear-route-btn"),
 
@@ -137,6 +141,15 @@ const planner = new Planner("planner-map", {
   onRouteChange: (result) => {
     renderStats(result, els);
     window.updateSheetSummary?.(result);
+    // Only a real change to the route counts as an edit (not a stats refresh).
+    if (!restoringRoute && routeSignature() !== savedSignature) routeDirty = true;
+    // Clearing/undoing everything detaches the map from its saved slot, so the
+    // next route drawn can't silently overwrite it.
+    if (!restoringRoute && planner.legs.length === 0 && !planner.pendingStart) {
+      currentSavedId = null;
+      routeDirty = false;
+    }
+    renderSavedRoutes();
     els.undoBtn.disabled = planner.waypoints.length === 0;
     els.clearBtn.disabled = planner.waypoints.length === 0;
     els.shareStatus.textContent = "";
@@ -199,6 +212,217 @@ refreshProfileHint();
     }
   });
 })();
+
+// ---------- In-page confirm dialog ----------
+/** Styled modal (not window.confirm -- that looks wrong on phones and can be
+ *  suppressed). buttons: [{ label, value, primary }]. Resolves with the chosen
+ *  value, or null if dismissed (Esc / backdrop). */
+function confirmDialog({ title, message, buttons }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    const h = document.createElement("h2");
+    h.textContent = title;
+    const p = document.createElement("p");
+    p.textContent = message;
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const done = (value) => {
+      document.removeEventListener("keydown", onKey);
+      backdrop.remove();
+      resolve(value);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") done(null);
+    };
+    for (const b of buttons) {
+      const btn = document.createElement("button");
+      btn.className = b.primary ? "primary-btn" : "secondary-btn";
+      btn.textContent = b.label;
+      btn.addEventListener("click", () => done(b.value));
+      actions.append(btn);
+    }
+    modal.append(h, p, actions);
+    backdrop.append(modal);
+    backdrop.addEventListener("pointerdown", (e) => {
+      if (e.target === backdrop) done(null);
+    });
+    document.addEventListener("keydown", onKey);
+    document.body.append(backdrop);
+    actions.lastElementChild?.focus();
+  });
+}
+
+// ---------- Saved routes (in memory only, max 5) ----------
+const MAX_SAVED = 5;
+const saved = []; // oldest first: { id, name, savedAt, snap }
+let savedCounter = 0;
+let currentSavedId = null; // which saved slot the route on screen came from
+let routeDirty = false; // changed since it was last saved/loaded?
+let restoringRoute = false;
+let savedSignature = ""; // fingerprint of the route as last saved/loaded, to tell real edits from stats refreshes
+
+function hasUnsavedRoute() {
+  const hasRoute = planner.legs.length > 0 || Boolean(planner.pendingStart);
+  return hasRoute && (routeDirty || currentSavedId === null);
+}
+
+function routeSignature() {
+  const all = planner._fullCoords();
+  const last = all[all.length - 1] || planner.pendingStart || [];
+  return `${planner.legs.length}|${all.length}|${last.join(",")}|${planner.profile}`;
+}
+
+function describeSaved(entry) {
+  const km = entry.snap.distanceM >= 1000 ? `${(entry.snap.distanceM / 1000).toFixed(2)} km` : `${Math.round(entry.snap.distanceM)} m`;
+  const t = entry.savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return { km, t };
+}
+
+function renderSavedRoutes() {
+  const hasRoute = planner.legs.length > 0 || Boolean(planner.pendingStart);
+  els.saveRouteBtn.disabled = !hasRoute || (currentSavedId !== null && !routeDirty);
+  els.saveRouteBtn.textContent = currentSavedId !== null ? "Update saved route" : "Save this route";
+  els.newRouteBtn.disabled = !hasRoute;
+  els.savedCount.textContent = `(${saved.length} of ${MAX_SAVED})`;
+  els.savedList.innerHTML = "";
+  for (const entry of saved) {
+    const { km, t } = describeSaved(entry);
+    const li = document.createElement("li");
+    li.className = "saved-item" + (entry.id === currentSavedId ? " current" : "");
+    const load = document.createElement("button");
+    load.className = "saved-load";
+    load.innerHTML = `${entry.name}<small>${PROFILE_LABELS[entry.snap.profile] || ""} &middot; ${km} &middot; saved ${t}${entry.id === currentSavedId ? " &middot; open now" : ""}</small>`;
+    load.addEventListener("click", () => openSavedRoute(entry.id));
+    const del = document.createElement("button");
+    del.className = "saved-del";
+    del.title = "Delete this saved route";
+    del.setAttribute("aria-label", `Delete ${entry.name}`);
+    del.textContent = "\u00D7";
+    del.addEventListener("click", () => deleteSavedRoute(entry.id));
+    li.append(load, del);
+    els.savedList.append(li);
+  }
+}
+
+function applyRoute(snap, id) {
+  restoringRoute = true;
+  try {
+    planner.restore(snap);
+    els.profileSelect.value = snap.profile;
+    currentSavedId = id;
+    routeDirty = false;
+    savedSignature = routeSignature();
+    refreshProfileHint();
+    refreshColorDot();
+  } finally {
+    restoringRoute = false;
+  }
+  renderSavedRoutes();
+}
+
+async function saveCurrentRoute() {
+  const snap = planner.snapshot();
+  if (currentSavedId !== null) {
+    const entry = saved.find((e) => e.id === currentSavedId);
+    if (entry) {
+      entry.snap = snap;
+      entry.savedAt = new Date();
+      routeDirty = false;
+      savedSignature = routeSignature();
+      renderSavedRoutes();
+      els.shareStatus.textContent = `Updated "${entry.name}".`;
+      return true;
+    }
+  }
+  if (saved.length >= MAX_SAVED) {
+    const oldest = saved[0];
+    const choice = await confirmDialog({
+      title: "Saved routes are full",
+      message: `You can keep ${MAX_SAVED} routes. Saving this one will remove the oldest, "${oldest.name}" (${describeSaved(oldest).km}). Continue?`,
+      buttons: [
+        { label: "Cancel", value: "cancel" },
+        { label: `Remove "${oldest.name}" and save`, value: "replace", primary: true },
+      ],
+    });
+    if (choice !== "replace") return false;
+    saved.shift();
+  }
+  const entry = { id: ++savedCounter, name: `Route ${savedCounter}`, savedAt: new Date(), snap };
+  saved.push(entry);
+  currentSavedId = entry.id;
+  routeDirty = false;
+  savedSignature = routeSignature();
+  renderSavedRoutes();
+  els.shareStatus.textContent = `Saved as "${entry.name}".`;
+  return true;
+}
+
+async function startNewRoute() {
+  if (hasUnsavedRoute()) {
+    const choice = await confirmDialog({
+      title: "Start a new route?",
+      message: "The route on the map has changes that aren't saved.",
+      buttons: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Start new without saving", value: "discard" },
+        { label: "Save, then start new", value: "save", primary: true },
+      ],
+    });
+    if (choice === "save") {
+      if (!(await saveCurrentRoute())) return; // the save was cancelled
+    } else if (choice !== "discard") {
+      return;
+    }
+  }
+  restoringRoute = true;
+  planner.clear();
+  restoringRoute = false;
+  currentSavedId = null;
+  routeDirty = false;
+  savedSignature = routeSignature();
+  renderSavedRoutes();
+}
+
+async function openSavedRoute(id) {
+  const entry = saved.find((e) => e.id === id);
+  if (!entry || id === currentSavedId) return;
+  if (hasUnsavedRoute()) {
+    const choice = await confirmDialog({
+      title: `Open "${entry.name}"?`,
+      message: "The route on the map has changes that aren't saved.",
+      buttons: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Open without saving", value: "discard" },
+        { label: "Save, then open", value: "save", primary: true },
+      ],
+    });
+    if (choice === "save") {
+      if (!(await saveCurrentRoute())) return;
+    } else if (choice !== "discard") {
+      return;
+    }
+  }
+  const fresh = saved.find((e) => e.id === id); // the list may have changed during a save
+  if (fresh) applyRoute(fresh.snap, fresh.id);
+}
+
+function deleteSavedRoute(id) {
+  const i = saved.findIndex((e) => e.id === id);
+  if (i === -1) return;
+  const [gone] = saved.splice(i, 1);
+  if (currentSavedId === gone.id) currentSavedId = null; // the route on screen stays; it's just no longer a saved slot
+  renderSavedRoutes();
+  els.shareStatus.textContent = `Deleted "${gone.name}".`;
+}
+
+els.saveRouteBtn.addEventListener("click", saveCurrentRoute);
+els.newRouteBtn.addEventListener("click", startNewRoute);
+renderSavedRoutes();
 
 // ---------- Phone layout: compact header row + bottom sheet ----------
 (function wirePhoneLayout() {

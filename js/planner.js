@@ -14,9 +14,9 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.17";
-import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.17";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.17";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.18";
+import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.18";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.18";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
@@ -750,6 +750,40 @@ export class Planner {
     for (const b of this.lastResult.breakdown) b.color = color;
     this._renderRoute(this.lastResult);
     this.onRouteChange(this.lastResult);
+  }
+
+  /** A deep, self-contained copy of the current route -- for the saved-routes list. */
+  snapshot() {
+    return {
+      profile: this.profile,
+      pendingStart: this.pendingStart ? [...this.pendingStart] : null,
+      legs: this.legs.map((leg) => ({
+        kind: leg.kind,
+        coords: leg.coords.map((c) => [c[0], c[1]]),
+        from: leg.from ? [...leg.from] : undefined,
+        to: leg.to ? [...leg.to] : undefined,
+      })),
+      distanceM: this.lastResult ? this.lastResult.distanceM : 0,
+    };
+  }
+
+  /** Replace the current route with a snapshot() copy and frame it on the map. */
+  restore(snap) {
+    this.routeToken++; // drop any in-flight tap-routing for the route being replaced
+    this.profile = snap.profile;
+    this.pendingStart = snap.pendingStart ? [...snap.pendingStart] : null;
+    this.legs = snap.legs.map((leg) => ({ ...leg, coords: leg.coords.map((c) => [c[0], c[1]]) }));
+    this._rebuild();
+    const all = this._fullCoords();
+    const pts = all.length ? all : this.pendingStart ? [this.pendingStart] : [];
+    if (pts.length) {
+      const lats = pts.map((c) => c[0]);
+      const lngs = pts.map((c) => c[1]);
+      this.map.fitBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: 60, maxZoom: 17, duration: 600 }
+      );
+    }
   }
 
   undo() {

@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.17" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.18" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.17";
+    var running = "1.2.18";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.17" />
+<link rel="stylesheet" href="css/style.css?v=1.2.18" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.17</span>
+    <span class="app-version">v1.2.18</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -127,6 +127,16 @@
           </div>
         </div>
 
+        <div class="sidebar-block" id="saved-block">
+          <h3>Saved routes <span id="saved-count" class="tiny-hint">(0 of 5)</span></h3>
+          <div class="button-row">
+            <button id="save-route-btn" class="secondary-btn" disabled>Save this route</button>
+            <button id="new-route-btn" class="secondary-btn" disabled>New route</button>
+          </div>
+          <ul id="saved-list" class="saved-list"></ul>
+          <p class="tiny-hint" id="saved-hint">Save up to 5 routes, start a fresh one, and come back to any of them. They're kept only while this page is open &mdash; a refresh clears them.</p>
+        </div>
+
         <div class="sidebar-block" id="stats-block" hidden>
           <h2>Route stats</h2>
           <div class="stat-row">
@@ -198,8 +208,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.17"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.18"></script>
 
-<script type="module" src="js/main.js?v=1.2.17"></script>
+<script type="module" src="js/main.js?v=1.2.18"></script>
 </body>
 </html>
