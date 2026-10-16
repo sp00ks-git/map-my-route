@@ -14,9 +14,9 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.8";
-import { getOrsKey, PROFILE_LABELS, getProfileColor } from "./config.js?v=1.2.8";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath } from "./waytype.js?v=1.2.8";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.9";
+import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.9";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.9";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
@@ -107,7 +107,8 @@ export class Planner {
       dragRotate: true,
       pitchWithRotate: false,
       touchPitch: false,
-      preserveDrawingBuffer: true, // so the screenshot button can read the canvas
+      // (Screenshots copy the canvas inside a render event -- see main.js
+      // captureMapCanvas -- so no preserveDrawingBuffer; MapLibre 5 ignores it.)
     });
     this.map.touchZoomRotate.enableRotation();
 
@@ -611,6 +612,7 @@ export class Planner {
       breakdown: [{ waytypeId: null, label, color, distanceM }],
       classified: false,
     };
+    this._classifyLocally(result, color);
     this.lastResult = result;
     this._renderRoute(result);
     this.onRouteChange(result);
@@ -618,6 +620,82 @@ export class Planner {
     // The route line must be one clear, read-through colour so road/place
     // labels stay legible underneath it (per operator direction). The
     // colour is the user's chosen route colour (getProfileColor).
+  }
+
+  /** Fill in result.breakdown (distance per road/path type) from the road
+   *  geometry we've already loaded -- local and instant, no Overpass call, so
+   *  it can't fail for a "long" route. The map line stays one solid colour
+   *  (deliberate, see _rebuild), so every row uses that same colour. Leaves
+   *  result.classified false only if we have no road data covering the route. */
+  _classifyLocally(result, color) {
+    const ways = this._networkCache ? [...this._networkCache.values()] : this._roadWays || [];
+    const { byType, coveredM, totalM } = ways.length ? distanceByWaytype(result.coords, ways) : { byType: new Map(), coveredM: 0, totalM: 0 };
+    const coverage = totalM ? coveredM / totalM : 0;
+    if (coverage >= 0.9) {
+      this._applyBreakdown(result, byType, color);
+      return;
+    }
+    // Less than ~90% of the route lies on roads we have loaded (e.g. a
+    // tap-to-tap route through areas never viewed, or minor roads that aren't
+    // drawn at a low zoom). Show what we have if it's at least half, and ask
+    // OpenStreetMap for the rest in the background.
+    if (coverage >= 0.5) this._applyBreakdown(result, byType, color);
+    this._classifyViaOverpass(result, color, coverage);
+  }
+
+  _applyBreakdown(result, byType, color) {
+    const rows = [...byType.entries()]
+      .map(([id, m]) => ({
+        waytypeId: id,
+        label: id ? WAYTYPE_STYLES[id]?.label || "Road" : "Other / not on a mapped road",
+        color,
+        distanceM: m,
+      }))
+      .sort((a, b) => b.distanceM - a.distanceM);
+    result.breakdown = rows;
+    result.classified = true;
+  }
+
+  /** Fallback when too little road data is loaded under the route: fetch the
+   *  roads from OpenStreetMap in ~2.5 km chunks (one huge bounding box for a
+   *  long route makes Overpass time out), then classify locally. */
+  async _classifyViaOverpass(result, color, localCoverage = 0) {
+    const CHUNK_M = 2500;
+    const MAX_CHUNKS = 10;
+    try {
+      const coords = result.coords;
+      const chunks = [];
+      let current = [coords[0]];
+      let run = 0;
+      for (let i = 1; i < coords.length; i++) {
+        run += pathLengthM([coords[i - 1], coords[i]]);
+        current.push(coords[i]);
+        if (run >= CHUNK_M) {
+          chunks.push(current);
+          current = [coords[i]];
+          run = 0;
+        }
+      }
+      if (current.length > 1) chunks.push(current);
+      if (chunks.length > MAX_CHUNKS) return; // too long to look up politely
+
+      const ways = [];
+      for (const chunk of chunks) {
+        if (this.lastResult !== result) return; // route changed while we were fetching
+        const lats = chunk.map((c) => c[0]);
+        const lngs = chunk.map((c) => c[1]);
+        const pad = 0.0004;
+        ways.push(...(await fetchWaysInBbox([Math.min(...lats) - pad, Math.min(...lngs) - pad * 1.6, Math.max(...lats) + pad, Math.max(...lngs) + pad * 1.6])));
+      }
+      if (this.lastResult !== result) return;
+      this._rememberWays(ways);
+      const { byType, coveredM, totalM } = distanceByWaytype(coords, ways);
+      if (!totalM || coveredM / totalM <= Math.max(localCoverage, 0.5)) return; // no better than what we already show
+      this._applyBreakdown(result, byType, color);
+      this.onRouteChange(result);
+    } catch (err) {
+      console.warn("Road-type lookup via OpenStreetMap failed:", err);
+    }
   }
 
   // ---------- Public API used by main.js ----------

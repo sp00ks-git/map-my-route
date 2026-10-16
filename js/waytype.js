@@ -11,6 +11,7 @@
 // which shows up as drawing NOT snapping to roads. Try each in turn.
 const OVERPASS_URLS = [
   "https://overpass-api.de/api/interpreter",
+  "https://lz4.overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
 ];
 
@@ -295,6 +296,58 @@ function insertWayVertices(push, way, segStart, segEnd) {
 }
 
 export { pathLengthM };
+
+/**
+ * Split a route's length by road/path type using ONLY already-loaded way
+ * geometry -- no network, so it's instant and can't "fail to look up". Each
+ * route segment takes the waytype of the nearest way within `maxM` of its
+ * midpoint (waytype 0 = not on any loaded way). Returns
+ * { byType: Map<waytypeId, meters>, coveredM, totalM }.
+ */
+export function distanceByWaytype(coords, ways, { maxM = 25 } = {}) {
+  const byType = new Map();
+  let totalM = 0;
+  let coveredM = 0;
+  if (coords.length < 2) return { byType, coveredM, totalM };
+
+  // Prefilter to ways that can touch the route at all, with a cached bbox each.
+  const padDeg = maxM / 111000 + 0.00005;
+  const box = boundingBox(coords, padDeg * 1.7);
+  const candidates = [];
+  for (const way of ways) {
+    if (!way._bbox) {
+      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+      for (const [lat, lng] of way.points) {
+        if (lat < s) s = lat; if (lat > n) n = lat;
+        if (lng < w) w = lng; if (lng > e) e = lng;
+      }
+      way._bbox = [s, w, n, e];
+    }
+    const b = way._bbox;
+    if (b[2] >= box[0] && b[0] <= box[2] && b[3] >= box[1] && b[1] <= box[3]) candidates.push(way);
+  }
+
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1], b = coords[i];
+    const len = haversineM(a, b);
+    if (!len) continue;
+    const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    let best = Infinity, id = 0;
+    for (const way of candidates) {
+      const bb = way._bbox;
+      if (mid[0] < bb[0] - padDeg || mid[0] > bb[2] + padDeg || mid[1] < bb[1] - padDeg * 1.7 || mid[1] > bb[3] + padDeg * 1.7) continue;
+      for (let j = 1; j < way.points.length; j++) {
+        const d = pointToSegmentM(mid, way.points[j - 1], way.points[j]);
+        if (d < best) { best = d; id = way.waytypeId; }
+      }
+    }
+    const type = best <= maxM ? id : 0;
+    totalM += len;
+    if (type) coveredM += len;
+    byType.set(type, (byType.get(type) || 0) + len);
+  }
+  return { byType, coveredM, totalM };
+}
 
 /**
  * Shortest road-following path between two points over the loaded way

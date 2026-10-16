@@ -1,16 +1,17 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.8";
-import { Planner, profileHint } from "./planner.js?v=1.2.8";
-import { renderStats } from "./stats.js?v=1.2.8";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.9";
+import { Planner, profileHint } from "./planner.js?v=1.2.9";
+import { renderStats } from "./stats.js?v=1.2.9";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
   buildShareUrl,
-  tryShorten,
+  createShortLink,
+  resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.8";
-import { openStreetLevelView } from "./streetview.js?v=1.2.8";
-import { searchPlaces } from "./geocode.js?v=1.2.8";
+} from "./share.js?v=1.2.9";
+import { openStreetLevelView } from "./streetview.js?v=1.2.9";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.9";
 import {
   getOrsKey,
   setOrsKey,
@@ -22,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.8";
+} from "./config.js?v=1.2.9";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -369,25 +370,90 @@ function locateMe() {
   tryPosition(0);
 }
 
-const hasSharedRoute = /^#r=/.test(window.location.hash);
+const hasSharedRoute = /^#r=/.test(window.location.hash) || new URLSearchParams(window.location.search).has("s");
 if (!hasSharedRoute) locateMe();
 
 // ---------- Sidebar actions ----------
+/** "Rodney Road" -> "Rodney-Road": keep file names portable. */
+function fileSafe(text) {
+  return text.normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+}
+
+function timestampForFilename(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+}
+
+/** MapLibre's WebGL canvas is cleared as soon as a frame is presented unless
+ *  the context was created with preserveDrawingBuffer -- and MapLibre 5
+ *  ignores the old top-level `preserveDrawingBuffer` option, so reading the
+ *  canvas later (toBlob) returned solid black. Copy it into a 2D canvas
+ *  *inside* a render event, while the frame is still valid; that works
+ *  whatever the context attributes are. The Start/Finish pins are DOM
+ *  elements, so they're drawn on, along with the map-data credit that
+ *  OpenStreetMap's licence requires on a copy of the map. */
+function captureMapCanvas(map, markers) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Map did not render in time")), 5000);
+    map.once("render", () => {
+      try {
+        clearTimeout(timer);
+        const gl = map.getCanvas();
+        const out = document.createElement("canvas");
+        out.width = gl.width;
+        out.height = gl.height;
+        const ctx = out.getContext("2d");
+        ctx.drawImage(gl, 0, 0);
+
+        const scale = gl.width / gl.clientWidth;
+        const pins = [["#22c55e", markers[0]], ["#ef4444", markers[1]]];
+        for (const [color, marker] of pins) {
+          if (!marker) continue;
+          const pt = map.project(marker.getLngLat());
+          ctx.beginPath();
+          ctx.arc(pt.x * scale, pt.y * scale, 9 * scale, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.lineWidth = 2.5 * scale;
+          ctx.strokeStyle = "#ffffff";
+          ctx.stroke();
+        }
+
+        const credit = "Map My Route  |  \u00A9 OpenStreetMap contributors, OpenFreeMap, OpenMapTiles";
+        const fontPx = Math.round(12 * scale);
+        ctx.font = `${fontPx}px system-ui, sans-serif`;
+        const barH = Math.round(fontPx * 1.9);
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillRect(0, out.height - barH, out.width, barH);
+        ctx.fillStyle = "#111827";
+        ctx.textBaseline = "middle";
+        ctx.fillText(credit, Math.round(fontPx * 0.6), out.height - barH / 2);
+
+        out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Capture produced no image"))), "image/png");
+      } catch (err) {
+        reject(err);
+      }
+    });
+    map.triggerRepaint();
+  });
+}
+
 els.screenshotBtn.addEventListener("click", async () => {
   els.shareStatus.textContent = "Capturing screenshot...";
   try {
-    // The map is a WebGL canvas now (MapLibre) -- html2canvas's DOM-cloning
-    // approach can't reliably read WebGL content, so we grab MapLibre's own
-    // canvas directly instead (reliable, but note it won't include the
-    // Start/Finish marker pins, which are separate DOM elements floating on
-    // top rather than part of the WebGL-rendered bitmap).
-    const blob = await new Promise((resolve) => planner.map.getCanvas().toBlob(resolve, "image/png"));
-    if (!blob) throw new Error("Capture produced no image");
-    downloadBlob(blob, "map-my-route.png");
-    els.shareStatus.textContent = "Screenshot downloaded (map only -- markers aren't captured).";
+    const [blob, area] = await Promise.all([
+      captureMapCanvas(planner.map, planner.markers),
+      (async () => {
+        const start = planner.waypoints[0];
+        return start ? reverseAreaName(start[0], start[1]) : "";
+      })(),
+    ]);
+    const name = ["MapMyRoute", timestampForFilename(), fileSafe(area)].filter(Boolean).join("_");
+    downloadBlob(blob, `${name}.png`);
+    els.shareStatus.textContent = `Screenshot saved as ${name}.png`;
   } catch (err) {
-    els.shareStatus.textContent =
-      "Couldn't auto-capture (browser blocked it). Use your OS screenshot tool (e.g. Win+Shift+S / Cmd+Shift+4) instead.";
+    console.error("Screenshot failed:", err);
+    els.shareStatus.textContent = `Couldn't capture the map (${err.message || err}). Use your OS screenshot tool (Win+Shift+S / Cmd+Shift+4) instead.`;
   }
 });
 
@@ -417,14 +483,21 @@ els.copyLinkBtn.addEventListener("click", async () => {
 });
 
 els.shortenBtn.addEventListener("click", async () => {
-  if (!els.shareLink.value) return;
-  els.shareStatus.textContent = "Trying to shorten...";
+  const match = els.shareLink.value.match(/#r=(.+)$/);
+  if (!match) {
+    els.shareStatus.textContent = "This link is already short.";
+    return;
+  }
+  els.shortenBtn.disabled = true;
+  els.shareStatus.textContent = "Shortening...";
   try {
-    const short = await tryShorten(els.shareLink.value);
-    els.shareLink.value = short;
-    els.shareStatus.textContent = "Shortened! (Full route data still loads from the original link if this one is unshortened.)";
-  } catch {
-    els.shareStatus.textContent = "Automatic shortening was blocked by the browser/network (CORS). The full link above still works fine -- just copy and share it directly.";
+    els.shareLink.value = await createShortLink(match[1]);
+    els.shareStatus.textContent = "Short link ready -- copy it and share it.";
+  } catch (err) {
+    console.error("Shortening failed:", err);
+    els.shareStatus.textContent = `Couldn't make a short link (${err.message || err}). The full link above still works -- copy that instead.`;
+  } finally {
+    els.shortenBtn.disabled = false;
   }
 });
 
@@ -480,12 +553,13 @@ els.resetColorsBtn.addEventListener("click", () => {
 });
 
 // ---------- Load a shared route from the URL, if present ----------
-(async function loadFromHash() {
-  const hash = window.location.hash.replace(/^#/, "");
-  const match = hash.match(/^r=(.+)$/);
-  if (!match) return;
+(async function loadSharedRoute() {
   try {
-    const state = await decodeRouteFromHash(match[1]);
+    let payload = window.location.hash.replace(/^#/, "").match(/^r=(.+)$/)?.[1] || null;
+    const shortId = new URLSearchParams(window.location.search).get("s");
+    if (!payload && shortId) payload = await resolveShortLink(shortId);
+    if (!payload) return;
+    const state = await decodeRouteFromHash(payload);
     if (!state) return;
     els.profileSelect.value = state.profile;
     setMode("planner");
@@ -497,5 +571,6 @@ els.resetColorsBtn.addEventListener("click", () => {
     refreshColorDot();
   } catch (err) {
     console.error("Failed to load shared route:", err);
+    els.shareStatus.textContent = `Couldn't open that shared link: ${err.message || err}`;
   }
 })();

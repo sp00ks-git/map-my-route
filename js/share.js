@@ -95,17 +95,34 @@ export function buildShareUrl(hashPayload) {
   return url.toString();
 }
 
-/** Best-effort link shortening via TinyURL's key-less endpoint. Many
- *  browsers/networks block this cross-origin call (TinyURL doesn't send
- *  CORS headers), so this can legitimately fail -- callers should fall back
- *  to the full link, which always works. */
-export async function tryShorten(longUrl) {
-  const api = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`;
-  const res = await fetch(api);
-  if (!res.ok) throw new Error(`Shortener returned ${res.status}`);
-  const text = (await res.text()).trim();
-  if (!text.startsWith("http")) throw new Error("Unexpected response from shortener");
-  return text;
+/** Short links are served by OUR OWN site (api/shorten.php + api/route.php),
+ *  not a third-party shortener: those block cross-origin browser calls (CORS)
+ *  and reject long URLs. Same-origin means it just works.
+ *  `hashPayload` is the string after "#r=" in the full link. Returns the short
+ *  URL, <site>/?s=<id>. */
+export async function createShortLink(hashPayload) {
+  const res = await fetch(new URL("api/shorten.php", window.location.href), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payload: hashPayload }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.id) throw new Error(data.error || `Short link service returned ${res.status}`);
+  const url = new URL(window.location.href);
+  url.hash = "";
+  url.search = `?s=${data.id}`;
+  return url.toString();
+}
+
+/** Fetch the route payload behind a short link id (see createShortLink). */
+export async function resolveShortLink(id) {
+  const res = await fetch(new URL(`api/route.php?id=${encodeURIComponent(id)}`, window.location.href), {
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.payload) throw new Error(data.error || `Short link service returned ${res.status}`);
+  return data.payload;
 }
 
 export function downloadBlob(blob, filename) {

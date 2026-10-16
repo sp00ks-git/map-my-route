@@ -2,19 +2,11 @@
 
 Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been started unless marked.
 
-## Bugs (do first)
+## Bugs
 
-1. **Screenshot saves a black image.**
-   - Find the cause (`preserveDrawingBuffer` is already on, so look at how the capture is composed).
-   - Filename: `MapMyRoute_YYYY-MM-DD_HH-MM_<Area>.png`, area from a reverse-geocode of the route start; fall back to date+time only if the lookup fails.
-   - Verify the saved file opens and shows map + route.
-2. **Link shortening blocked by CORS.**
-   - Shorten server-side (small endpoint on our own Apache host that calls a shortener), not from the browser.
-   - Alternative: self-hosted shortener (needs storage + uptime). Decide when starting.
-   - Remove the "blocked by the browser/network (CORS)" message once fixed.
-3. **"Couldn't look up road/path types… very long route" shown on a 6 km route.**
-   - Suspected cause (unchecked): drawn routes are always `classified: false`, so the panel shows this for every drawn route; 6 km is well under the 60 km limit in `waytype.js`.
-   - Fix: classify locally from the road data already loaded (no Overpass call) and show a real breakdown; make any remaining failure message honest.
+1. ~~Screenshot saves a black image~~ — FIXED in v1.2.9 (see Done).
+2. ~~Link shortening blocked by CORS~~ — FIXED in v1.2.9 (see Done).
+3. ~~"Couldn't look up road/path types… very long route"~~ — FIXED in v1.2.9 (see Done).
 
 ## Removals / changes
 
@@ -44,6 +36,12 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 10. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.9:
+  - Screenshot: was black because MapLibre 5 ignores `preserveDrawingBuffer`; now copied inside a render event, with Start/Finish pins and the OSM credit drawn on. Saved as `MapMyRoute_YYYY-MM-DD_HH-MM_<Area>.png`.
+  - Short links: self-hosted (`api/shorten.php`, `api/route.php`, data in `/var/www/mapmyroute-data`, outside the web root; link form `/?s=<id>`), 40 new links/IP/hour, 600 KB max, expires after 180 days unused. No third party, no CORS.
+  - Road/path breakdown: computed locally from loaded road data (instant); falls back to chunked OpenStreetMap lookups when <90% of the route is covered; honest message if neither works.
+  - Known limit: Overpass mirrors are flaky and most don't allow browser (CORS) calls, so the fallback can fail.
 
 - v1.2.7: draw mode no longer loses road segments (dedupe by geometry, not vector-tile id; road list frozen per stroke).
 - v1.2.8: a new stroke is joined to the route's end along the road network instead of a straight gap.

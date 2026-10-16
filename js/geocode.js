@@ -35,3 +35,19 @@ export async function searchPlaces(query, limit = 5) {
       : null,
   }));
 }
+
+/**
+ * Rough area name for a point (suburb/village/town/city), for naming files.
+ * Returns "" if the lookup fails or times out -- callers must not depend on it.
+ */
+export async function reverseAreaName(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&lat=${lat}&lon=${lon}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return "";
+    const a = (await res.json()).address || {};
+    return a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || a.county || "";
+  } catch {
+    return "";
+  }
+}
