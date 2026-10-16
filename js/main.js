@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.9";
-import { Planner, profileHint } from "./planner.js?v=1.2.9";
-import { renderStats } from "./stats.js?v=1.2.9";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.10";
+import { Planner, profileHint } from "./planner.js?v=1.2.10";
+import { renderStats } from "./stats.js?v=1.2.10";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.9";
-import { openStreetLevelView } from "./streetview.js?v=1.2.9";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.9";
+} from "./share.js?v=1.2.10";
+import { openStreetLevelView } from "./streetview.js?v=1.2.10";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.10";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.9";
+} from "./config.js?v=1.2.10";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -155,6 +155,50 @@ function refreshProfileHint() {
   els.profileHint.textContent = profileHint(els.profileSelect.value, Boolean(getOrsKey()));
 }
 refreshProfileHint();
+
+// ---------- Live pointer coordinates ----------
+// Shows the exact latitude/longitude under the mouse (or finger) as it moves
+// over the map; click/tap the readout to copy "lat, lng".
+(function wireCoordinateReadout() {
+  const box = document.getElementById("map-coords");
+  const latEl = document.getElementById("coord-lat");
+  const lngEl = document.getElementById("coord-lng");
+  box.classList.add("idle");
+  let last = null;
+  let queued = false;
+
+  const show = () => {
+    queued = false;
+    if (!last) return;
+    latEl.textContent = last.lat.toFixed(6);
+    lngEl.textContent = last.lng.toFixed(6);
+    box.classList.remove("idle");
+  };
+
+  planner.whenReady().then(() => {
+    const container = planner.map.getContainer();
+    container.addEventListener("pointermove", (e) => {
+      const rect = container.getBoundingClientRect();
+      const { lat, lng } = planner.map.unproject([e.clientX - rect.left, e.clientY - rect.top]);
+      last = { lat, lng: ((((lng + 180) % 360) + 360) % 360) - 180 }; // wrap if the world is panned past the antimeridian
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(show);
+      }
+    });
+  });
+
+  box.addEventListener("click", async () => {
+    if (!last) return;
+    const text = `${last.lat.toFixed(6)}, ${last.lng.toFixed(6)}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      els.shareStatus.textContent = `Copied ${text}`;
+    } catch {
+      els.shareStatus.textContent = `Coordinates: ${text}`;
+    }
+  });
+})();
 
 // Exposed for debugging/automated tests (console, Playwright). Not used by
 // the app itself.

@@ -33,9 +33,12 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 8. Mobile layout: controls (search, pan arrows, pop-ups) cover the small map; map area is short because the route panel takes the rest of the screen.
 9. `origin/main` is still at the first commit; the work lives on `live`. Decide whether to fast-forward `main`.
-10. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
+10. RULE: every update ships under a new version number (`./bump-version.sh`); the pre-commit hook enforces it.
+11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.10: live latitude/longitude readout (top-left of the map; below the search bar on phones) that follows the mouse/finger, click to copy. Also `bump-version.sh` + a pre-commit hook that blocks commits changing app files without a new version.
 
 - v1.2.9:
   - Screenshot: was black because MapLibre 5 ignores `preserveDrawingBuffer`; now copied inside a render event, with Start/Finish pins and the OSM credit drawn on. Saved as `MapMyRoute_YYYY-MM-DD_HH-MM_<Area>.png`.
