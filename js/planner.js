@@ -14,9 +14,9 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.6";
-import { getOrsKey, PROFILE_LABELS, getProfileColor } from "./config.js?v=1.2.6";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM } from "./waytype.js?v=1.2.6";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.7";
+import { getOrsKey, PROFILE_LABELS, getProfileColor } from "./config.js?v=1.2.7";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM } from "./waytype.js?v=1.2.7";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
@@ -196,7 +196,13 @@ export class Planner {
           .filter((point) => Array.isArray(point) && point.length >= 2)
           .map(([lng, lat]) => [lat, lng]);
         if (points.length < 2) continue;
-        const key = feature.id ?? JSON.stringify(points);
+        // Dedupe per LINESTRING by geometry, never by feature id: a vector-tile
+        // feature id is shared by every tile piece of the same OSM way (and by
+        // every sub-line of a MultiLineString), so keying on it silently drops
+        // all but one piece -- leaving gaps in the snap network where the line
+        // then refuses to follow the road.
+        const a = points[0], z = points[points.length - 1];
+        const key = [points.length, a[0].toFixed(7), a[1].toFixed(7), z[0].toFixed(7), z[1].toFixed(7)].join("|");
         if (seen.has(key)) continue;
         seen.add(key);
         ways.push({ points, waytypeId: visibleRoadType(feature.properties) });
@@ -256,7 +262,7 @@ export class Planner {
     // fall back to showing the raw finger line.
     const buildPreviewLine = () => {
       if (this._canSnap && this._dragSnapped && this._dragSnapped.length >= 2) {
-        return buildTraceGeometry(this._dragSnapped, this._roadWays);
+        return buildTraceGeometry(this._dragSnapped, this._strokeWays);
       }
       return this._dragRaw || [];
     };
@@ -288,7 +294,11 @@ export class Planner {
       // Snap live if we have road data; otherwise capture raw and match on
       // release. Either way the gesture is always captured -- a network hiccup
       // can never prevent drawing.
-      this._canSnap = !!(this._roadWays && this._roadWays.length);
+      // Freeze the network for the whole stroke: _roadWays is replaced on every
+      // map idle/moveend, and wayIndex values are indices into it, so swapping
+      // it mid-stroke would point the lock/trace at the wrong roads.
+      this._strokeWays = this._roadWays;
+      this._canSnap = !!(this._strokeWays && this._strokeWays.length);
       this._dragRaw = [firstRaw];
       this._dragSnapped = this._canSnap ? [this._snapFull(firstRaw)] : null;
       this._dragLastPx = [e.clientX, e.clientY];
@@ -390,9 +400,10 @@ export class Planner {
 
   _snapFull(latlng) {
     const raw = { lat: latlng[0], lng: latlng[1], wayIndex: -1, segmentIndex: -1, arcM: null };
-    if (!this._roadWays || !this._roadWays.length) return raw;
+    const ways = this._strokeWays || this._roadWays;
+    if (!ways || !ways.length) return raw;
 
-    const s = snapToNearestWay(latlng, this._roadWays, {
+    const s = snapToNearestWay(latlng, ways, {
       maxM: 40,
       arcWindowM: 90,
       stickyMarginM: 18,
@@ -451,7 +462,7 @@ export class Planner {
   _commitFreehandStroke(raw, snapped) {
     // Reuse the snap results already computed live during the drag (identical
     // to what the preview showed) when we have them; otherwise snap now.
-    if (!snapped && this._roadWays.length) {
+    if (!snapped && this._strokeWays?.length) {
       this._lockedWayIndex = null;
       this._lockedArcM = null;
       this._lastSnappedPoint = null;
@@ -466,7 +477,7 @@ export class Planner {
       this._addFallbackStroke(raw);
       return;
     }
-    const coords = buildTraceGeometry(snapped, this._roadWays);
+    const coords = buildTraceGeometry(snapped, this._strokeWays);
     if (coords.length < 2) {
       this._addFallbackStroke(raw);
       return;
@@ -504,7 +515,7 @@ export class Planner {
   }
 
   _addTraceStroke(snapped) {
-    const coords = buildTraceGeometry(snapped, this._roadWays);
+    const coords = buildTraceGeometry(snapped, this._strokeWays);
     if (coords.length < 2) {
       this._handleTap([snapped[0].lat, snapped[0].lng]);
       return;
