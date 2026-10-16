@@ -38,6 +38,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Done
 
+- v1.2.14: short links retyped on a phone failed (server log showed the phone requesting `lzx1NZhb`, lowercase L, for `Izx1NZhb`, capital i). New ids use a no-look-alike lowercase alphabet (10 chars); lookups also accept wrong case / I-l-1 / O-0 mix-ups when the match is unique, so old links keep working.
+
 - v1.2.13: shared/short links on phones: self-healing cache check (`version.json` vs the page's version, one reload max), short links open without needing browser gunzip support, and a failed link open now shows a visible message instead of silently showing the UK.
 
 - v1.2.10: live latitude/longitude readout (top-left of the map; below the search bar on phones) that follows the mouse/finger, click to copy. Also `bump-version.sh` + a pre-commit hook that blocks commits changing app files without a new version.

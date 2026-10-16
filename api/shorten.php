@@ -31,7 +31,19 @@ if (!is_string($payload) || strlen($payload) < 8 || strlen($payload) > MAX_PAYLO
     fail(400, 'Invalid route payload');
 }
 
-$id = substr(rtrim(strtr(base64_encode(hash('sha256', $payload, true)), '+/', '-_'), '='), 0, 8);
+// Ids use an alphabet with no look-alike characters (no i, l, o, u; all
+// lowercase): short links get retyped from screens and read aloud, and a
+// capital I vs lowercase l or an auto-capitalised first letter broke them.
+function short_id(string $payload, int $len = 10): string {
+    $alphabet = '0123456789abcdefghjkmnpqrstvwxyz'; // Crockford base32, lowercase
+    $bytes = hash('sha256', $payload, true);
+    $id = '';
+    for ($i = 0; $i < $len; $i++) {
+        $id .= $alphabet[ord($bytes[$i]) & 31];
+    }
+    return $id;
+}
+$id = short_id($payload);
 $file = DATA_DIR . "/links/$id.txt";
 
 // Re-sharing an existing route costs nothing and needs no rate limit.

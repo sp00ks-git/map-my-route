@@ -9,7 +9,23 @@ if (!is_string($id) || !preg_match('/^[A-Za-z0-9_-]{6,16}$/', $id)) {
     echo json_encode(['error' => 'Bad link id']);
     exit;
 }
-$file = "/var/www/mapmyroute-data/links/$id.txt";
+$dir = '/var/www/mapmyroute-data/links';
+$file = "$dir/$id.txt";
+
+// Retyped links get mangled: auto-capitalised first letter, capital I vs
+// lowercase l vs 1, O vs 0. If the exact id isn't found, accept a case- and
+// look-alike-insensitive match -- but only when it is unambiguous.
+function fold_id(string $s): string {
+    return strtr(strtolower($s), ['i' => 'l', '1' => 'l', 'o' => '0']);
+}
+if (!is_file($file)) {
+    $want = fold_id($id);
+    $matches = [];
+    foreach (glob("$dir/*.txt") ?: [] as $f) {
+        if (fold_id(basename($f, '.txt')) === $want) $matches[] = $f;
+    }
+    if (count($matches) === 1) $file = $matches[0];
+}
 if (!is_file($file)) {
     http_response_code(404);
     header('Cache-Control: no-store');
