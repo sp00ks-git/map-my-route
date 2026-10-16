@@ -27,6 +27,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Done
 
+- v1.2.23: start/finish photos are now mini thumbnails (up to 3 per end, nearest first) that open in an in-page viewer (arrows / Esc / click outside to close). No link back to KartaView anywhere; Commons photos keep a small licence/details link inside the viewer only.
+
 - v1.2.22: start/finish photos now use KartaView street-level imagery first (free, no key; photos taken from the road, often within metres) and fall back to Wikimedia Commons. The Google Street View code and Settings key field were removed. Mapillary was ruled out (needs a token).
 
 - v1.2.21: README rewritten to match the app (was describing Leaflet/html2canvas/TinyURL); stats show "<1 min"; smaller location-blocked pop-up on phones.

@@ -34,7 +34,7 @@ function prettyTitle(fileTitle) {
     .trim();
 }
 
-async function commonsPhoto(lat, lng, radiusM) {
+async function commonsPhotos(lat, lng, radiusM) {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -53,68 +53,79 @@ async function commonsPhoto(lat, lng, radiusM) {
   const res = await fetch(`${COMMONS_API}?${params}`, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`Wikimedia Commons returned ${res.status}`);
   const pages = Object.values((await res.json()).query?.pages || {});
-  const candidates = pages
+  return pages
     .filter((p) => p.imageinfo?.[0] && /^image\/(jpeg|png)$/.test(p.imageinfo[0].mime) && p.imageinfo[0].width >= 400 && p.coordinates?.[0])
-    .map((p) => ({ page: p, distanceM: haversineM(lat, lng, p.coordinates[0].lat, p.coordinates[0].lon) }))
-    .sort((a, b) => a.distanceM - b.distanceM);
-  if (!candidates.length) return null;
-  const { page, distanceM } = candidates[0];
-  const info = page.imageinfo[0];
-  const meta = info.extmetadata || {};
-  return {
-    source: "Wikimedia Commons",
-    src: info.thumburl || info.url,
-    title: prettyTitle(page.title),
-    distanceM,
-    credit: [plainText(meta.Artist?.value), plainText(meta.LicenseShortName?.value)].filter(Boolean).join(" -- "),
-    pageUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`,
-  };
+    .map((page) => {
+      const info = page.imageinfo[0];
+      const meta = info.extmetadata || {};
+      return {
+        source: "Wikimedia Commons",
+        thumb: info.thumburl || info.url,
+        src: info.thumburl || info.url,
+        title: prettyTitle(page.title),
+        distanceM: haversineM(lat, lng, page.coordinates[0].lat, page.coordinates[0].lon),
+        credit: [plainText(meta.Artist?.value), plainText(meta.LicenseShortName?.value)].filter(Boolean).join(" -- "),
+        // Only shown inside the enlarged view, as the licence's attribution link.
+        pageUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`,
+      };
+    });
 }
 
-async function kartaviewPhoto(lat, lng, radiusM) {
-  const url = `${KARTAVIEW_API}?lat=${lat}&lng=${lng}&radius=${radiusM}&itemsPerPage=10`;
+async function kartaviewPhotos(lat, lng, radiusM) {
+  const url = `${KARTAVIEW_API}?lat=${lat}&lng=${lng}&radius=${radiusM}&itemsPerPage=20`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`KartaView returned ${res.status}`);
   const rows = (await res.json()).result?.data || [];
-  const best = rows
+  return rows
     .filter((r) => r.autoImgProcessingStatus === "FINISHED" && (r.fileurlLTh || r.fileurlProc))
-    .map((r) => ({ r, distanceM: haversineM(lat, lng, Number(r.lat), Number(r.lng)) }))
-    .sort((a, b) => a.distanceM - b.distanceM)[0];
-  if (!best) return null;
-  const when = best.r.shotDate ? new Date(best.r.shotDate.replace(" ", "T")) : null;
-  return {
-    source: "KartaView",
-    src: best.r.fileurlLTh || best.r.fileurlProc,
-    title: when && !Number.isNaN(when.getTime()) ? `Street-level photo, ${when.getFullYear()}` : "Street-level photo",
-    distanceM: best.distanceM,
-    credit: "contributors, CC BY-SA 4.0",
-    pageUrl: null,
-  };
+    .map((r) => {
+      const when = r.shotDate ? new Date(r.shotDate.replace(" ", "T")) : null;
+      return {
+        source: "KartaView",
+        thumb: r.fileurlTh || r.fileurlLTh || r.fileurlProc,
+        src: r.fileurlLTh || r.fileurlProc,
+        title: when && !Number.isNaN(when.getTime()) ? `Street-level photo, ${when.getFullYear()}` : "Street-level photo",
+        distanceM: haversineM(lat, lng, Number(r.lat), Number(r.lng)),
+        credit: "contributors, CC BY-SA 4.0",
+        pageUrl: null, // deliberately no link back to KartaView
+      };
+    });
+}
+
+/** Nearest first, dropping near-duplicates (shots a few metres apart), up to `max`. */
+function pickDistinct(photos, max) {
+  const picked = [];
+  for (const p of [...photos].sort((a, b) => a.distanceM - b.distanceM)) {
+    if (picked.length >= max) break;
+    if (picked.some((q) => Math.abs(q.distanceM - p.distanceM) < 8 && q.title === p.title)) continue;
+    picked.push(p);
+  }
+  return picked;
 }
 
 /**
- * Best photo near a point, or null: KartaView street-level first (within 50 m,
- * then 200 m), then Wikimedia Commons (within ~300 m, then ~1.5 km). A source
- * that errors is skipped; throws only if every source errored.
+ * Up to `max` photos near a point: KartaView street-level first (within 200 m),
+ * else Wikimedia Commons (within ~300 m, then ~1.5 km). Returns [] when there
+ * are none; a source that errors is skipped, and it throws only if every
+ * source errored.
  */
-export async function findPhoto(lat, lng) {
+export async function findPhotos(lat, lng, max = 3) {
   const attempts = [
-    () => kartaviewPhoto(lat, lng, 50),
-    () => kartaviewPhoto(lat, lng, 200),
-    () => commonsPhoto(lat, lng, NEAR_M),
-    () => commonsPhoto(lat, lng, FAR_M),
+    () => kartaviewPhotos(lat, lng, 200),
+    () => commonsPhotos(lat, lng, NEAR_M),
+    () => commonsPhotos(lat, lng, FAR_M),
   ];
   let errors = 0;
   let lastError = null;
   for (const attempt of attempts) {
     try {
-      const photo = await attempt();
-      if (photo) return photo;
+      const picked = pickDistinct(await attempt(), max);
+      if (picked.length) return picked;
     } catch (err) {
       errors++;
       lastError = err;
     }
   }
   if (errors === attempts.length) throw lastError;
-  return null;
+  return [];
 }

@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.22";
-import { Planner, profileHint } from "./planner.js?v=1.2.22";
-import { renderStats } from "./stats.js?v=1.2.22";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.23";
+import { Planner, profileHint } from "./planner.js?v=1.2.23";
+import { renderStats } from "./stats.js?v=1.2.23";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.22";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.22";
-import { findPhoto } from "./photos.js?v=1.2.22";
+} from "./share.js?v=1.2.23";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.23";
+import { findPhotos } from "./photos.js?v=1.2.23";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.22";
+} from "./config.js?v=1.2.23";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -221,39 +221,116 @@ refreshProfileHint();
 })();
 
 // ---------- Start / finish photos ----------
-function photoCard(label, photo, error) {
-  const card = document.createElement("figure");
-  card.className = "photo-card";
-  if (!photo) {
+/** Enlarged photo in an in-page viewer (Esc / click outside / x to close,
+ *  arrows to flip through that end's photos). Never links to KartaView. */
+function openPhotoViewer(label, photos, startIndex) {
+  let i = startIndex;
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop photo-viewer";
+  backdrop.setAttribute("role", "dialog");
+  backdrop.setAttribute("aria-modal", "true");
+  backdrop.setAttribute("aria-label", `${label} photo`);
+  const frame = document.createElement("div");
+  frame.className = "photo-viewer-frame";
+  const img = document.createElement("img");
+  img.referrerPolicy = "no-referrer";
+  const cap = document.createElement("div");
+  cap.className = "photo-viewer-caption";
+  const mk = (cls, text, aria, fn) => {
+    const b = document.createElement("button");
+    b.className = cls;
+    b.type = "button";
+    b.textContent = text;
+    b.setAttribute("aria-label", aria);
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fn();
+    });
+    return b;
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    backdrop.remove();
+  };
+  const show = (n) => {
+    i = (n + photos.length) % photos.length;
+    const p = photos[i];
+    img.src = p.src;
+    img.alt = `${label}: ${p.title}`;
+    cap.replaceChildren();
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    cap.append(strong, ` \u00B7 ${p.title} \u00B7 ${p.distanceM < 15 ? "at this spot" : `${Math.round(p.distanceM)} m away`}`
+      + (photos.length > 1 ? ` \u00B7 ${i + 1} of ${photos.length}` : ""));
+    const credit = document.createElement("div");
+    credit.className = "photo-viewer-credit";
+    credit.append(`${p.source}${p.credit ? ` \u2014 ${p.credit}` : ""}`);
+    if (p.pageUrl) {
+      credit.append(" \u00B7 ");
+      const a = document.createElement("a");
+      a.href = p.pageUrl;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = "licence & details";
+      credit.append(a);
+    }
+    cap.append(credit);
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowRight" && photos.length > 1) show(i + 1);
+    else if (e.key === "ArrowLeft" && photos.length > 1) show(i - 1);
+  };
+  frame.append(img, cap, mk("photo-viewer-close", "\u00D7", "Close photo", close));
+  if (photos.length > 1) {
+    frame.append(mk("photo-viewer-nav prev", "\u2039", "Previous photo", () => show(i - 1)), mk("photo-viewer-nav next", "\u203A", "Next photo", () => show(i + 1)));
+  }
+  backdrop.append(frame);
+  backdrop.addEventListener("pointerdown", (e) => {
+    if (e.target === backdrop) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.body.append(backdrop);
+  show(i);
+}
+
+function photoRow(label, photos, error) {
+  const row = document.createElement("div");
+  row.className = "photo-row";
+  const head = document.createElement("div");
+  head.className = "photo-row-label";
+  head.textContent = label;
+  row.append(head);
+  if (!photos.length) {
     const msg = document.createElement("div");
     msg.className = "photo-empty";
-    msg.textContent = error ? `${label}: couldn't load a photo (${error}).` : `${label}: no photo found near here.`;
-    card.append(msg);
-    return card;
+    msg.textContent = error ? `Couldn't load photos (${error}).` : "No photos found near here.";
+    row.append(msg);
+    return row;
   }
-  const img = document.createElement("img");
-  img.src = photo.src;
-  img.alt = `${label}: ${photo.title}`;
-  img.loading = "lazy";
-  img.referrerPolicy = "no-referrer";
-  const cap = document.createElement("figcaption");
-  const strong = document.createElement("strong");
-  strong.textContent = label;
-  cap.append(strong, ` \u00B7 ${photo.title} \u00B7 ${photo.distanceM < 15 ? "at this spot" : `${Math.round(photo.distanceM)} m away`}`);
-  const credit = document.createElement("div");
-  credit.append(`${photo.source}${photo.credit ? ` \u2014 ${photo.credit}` : ""}`);
-  if (photo.pageUrl) {
-    credit.append(" \u00B7 ");
-    const a = document.createElement("a");
-    a.href = photo.pageUrl;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.textContent = "details";
-    credit.append(a);
-  }
-  cap.append(credit);
-  card.append(img, cap);
-  return card;
+  const strip = document.createElement("div");
+  strip.className = "photo-strip";
+  photos.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "photo-thumb";
+    b.title = `${p.title} \u2014 click to enlarge`;
+    b.setAttribute("aria-label", `Enlarge ${label} photo ${i + 1}: ${p.title}`);
+    const img = document.createElement("img");
+    img.src = p.thumb;
+    img.alt = "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    b.append(img);
+    b.addEventListener("click", () => openPhotoViewer(label, photos, i));
+    strip.append(b);
+  });
+  row.append(strip);
+  const note = document.createElement("div");
+  note.className = "photo-note";
+  note.textContent = `${photos[0].source} \u00B7 tap a photo to enlarge`;
+  row.append(note);
+  return row;
 }
 
 function clearPhotos() {
@@ -272,13 +349,13 @@ els.photosBtn.addEventListener("click", async () => {
   els.photosGrid.replaceChildren(Object.assign(document.createElement("div"), { className: "photo-empty tiny-hint", textContent: "Looking for photos..." }));
   const lookup = async (pt) => {
     try {
-      return { photo: await findPhoto(pt[0], pt[1]) };
+      return { photos: await findPhotos(pt[0], pt[1], 3) };
     } catch (err) {
-      return { error: err.message || String(err) };
+      return { photos: [], error: err.message || String(err) };
     }
   };
   const [a, b] = await Promise.all([lookup(start), lookup(end)]);
-  els.photosGrid.replaceChildren(photoCard("Start", a.photo, a.error), photoCard("Finish", b.photo, b.error));
+  els.photosGrid.replaceChildren(photoRow("Start", a.photos, a.error), photoRow("Finish", b.photos, b.error));
   els.photosBtn.disabled = false;
 });
 

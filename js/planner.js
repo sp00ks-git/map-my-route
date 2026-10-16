@@ -14,9 +14,9 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.22";
-import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.22";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.22";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.23";
+import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.23";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.23";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
