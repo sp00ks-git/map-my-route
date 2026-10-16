@@ -701,7 +701,14 @@ select, input[type="text"] {
   body.globe-view .app-header .map-search { display: none; }
 
   .app-main { height: calc(100% - 48px - env(safe-area-inset-top, 0px)); }
-  .geo-status { top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .geo-status {
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    max-width: calc(100vw - 24px);
+  }
+  .geo-status-btn { min-height: 28px; padding: 4px 10px; }
 
   /* ---- Route panel becomes a bottom sheet over a full-height map ---- */
   .planner-layout { grid-template-columns: 1fr; grid-template-rows: 1fr; }

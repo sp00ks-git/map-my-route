@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.20";
-import { Planner, profileHint } from "./planner.js?v=1.2.20";
-import { renderStats } from "./stats.js?v=1.2.20";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.21";
+import { Planner, profileHint } from "./planner.js?v=1.2.21";
+import { renderStats } from "./stats.js?v=1.2.21";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.20";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.20";
-import { findPhoto } from "./photos.js?v=1.2.20";
+} from "./share.js?v=1.2.21";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.21";
+import { findPhoto } from "./photos.js?v=1.2.21";
 import {
   getOrsKey,
   setOrsKey,
@@ -25,7 +25,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.20";
+} from "./config.js?v=1.2.21";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),

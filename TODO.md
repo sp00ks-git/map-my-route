@@ -27,6 +27,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Done
 
+- v1.2.21: README rewritten to match the app (was describing Leaflet/html2canvas/TinyURL); stats show "<1 min"; smaller location-blocked pop-up on phones.
+
 - v1.2.20: "Photos of start & finish" button — shows the nearest openly-licensed photo (Wikimedia Commons / Geograph, with distance, author, licence and a details link) for each end, on the page, loaded on demand; clears when the route changes; clear message if the lookup fails. Optional Google Maps API key in Settings switches to Google Street View where Google has coverage, falling back to Commons (that Google path has not been tested — needs a real key).
 
 - v1.2.19: GPX export checked and improved: valid GPX 1.1 (parsed + point count verified), Start/Finish waypoints, timestamp, XML-escaped names, filename `MapMyRoute_<date>_<time>_<area>.gpx`; plus a "What's a GPX file?" panel explaining the benefit and how to open it on Android, iPhone, Garmin and desktop.

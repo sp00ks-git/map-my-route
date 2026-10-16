@@ -8,7 +8,7 @@ function formatDuration(s) {
   const totalMin = Math.round(s / 60);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  if (h === 0) return `${m} min`;
+  if (h === 0) return m < 1 ? "<1 min" : `${m} min`;
   return `${h} h ${m} min`;
 }
 

@@ -1,88 +1,79 @@
 # Map My Route
 
-A local, free, open-source alternative to "draw a route on Google Earth and
-share it" -- no Google account, no billing, no API keys required to get
-started.
+A free, open alternative to "draw a route on Google Earth and share it" -- no
+Google account, no billing, no API keys needed. Live at
+<https://mapmyroute.ddns.net/>.
 
 ## What it does
 
-- **Globe view** -- a free, spinnable 3D globe (MapLibre GL JS + OpenFreeMap
-  vector tiles). No Google Earth, no API key.
-- **Route Planner** -- a "birds-eye" 2D map (Leaflet). Click to drop a start
-  point, keep clicking to route on to the finish (and anywhere in between).
-  The line snaps to the real road/path network -- it's not a freehand
-  scribble, it's an actual route.
-- **Path-type coloring** -- once you add a free openrouteservice API key
-  (see below), the route line automatically changes color as it moves from
-  a road onto a track, footway, cycleway, bridleway/path, or steps, so it's
-  obvious at a glance what kind of terrain a section covers.
-- **Sidebar stats** -- total distance, estimated time, elevation gain/loss
-  (when available), and a distance breakdown by path type.
-- **Screenshot** -- exports the current map + route as a PNG.
-- **GPX export** -- downloads the route as a standard `.gpx` track file that
-  opens in any GPS/hiking app.
-- **Share link** -- packs the *entire computed route* into the URL itself,
-  so whoever you send it to sees the exact same route instantly, with no
-  API key of their own and no server-side database. There's also a
-  "try to shorten" button that calls TinyURL's free, key-less API; some
-  browsers/networks block that cross-origin call (it's outside this app's
-  control), in which case the full link is shown instead and works exactly
-  the same.
+- **Globe view** -- a spinnable 3D globe (MapLibre GL JS + OpenFreeMap vector tiles).
+- **Route Planner** -- a 2D map you *draw* on with a mouse or finger (turn on the
+  pencil). The line locks to the real roads and paths under your stroke: it is
+  traced from the road geometry already on screen, not guessed by a routing
+  engine, so it can't wander onto a neighbouring road. Tapping point-to-point
+  also works (OSRM routing).
+- **One continuous route** -- lift off, pan/zoom, and start the next stroke
+  anywhere near the end; the gap is joined along the road automatically.
+- **Live lat/lng** under the pointer (click it to copy).
+- **Stats** -- distance, estimated time and a distance breakdown by road/path
+  type, computed locally from the loaded map data.
+- **Saved routes** -- keep up to 5 routes while the page is open (in memory only,
+  lost on refresh -- no accounts). Saving a 6th asks before removing the oldest.
+- **Screenshot** -- PNG of the map with route, Start/Finish pins and the required
+  OpenStreetMap credit, named `MapMyRoute_<date>_<time>_<area>.png`.
+- **GPX export** -- standard GPX 1.1 track with Start/Finish waypoints; the page
+  explains what GPX is and how to open it on phones, Garmin and desktop.
+- **Share links** -- the whole route is packed into the URL, plus a **short link**
+  (`/?s=<id>`) served by this site itself (`api/shorten.php`, `api/route.php`).
+- **Start/finish photos** -- on-demand photos near each end from Wikimedia Commons
+  (openly licensed, credited). Optionally add your own Google Maps API key in
+  Settings to use Street View instead where Google has coverage.
+- **Phone layout** -- one compact top row (Globe/Route tabs, lat/lng, search,
+  settings) and the Route panel as a pull-up bottom sheet, so the map gets the
+  screen.
 
-## Running it locally
+## Running it
 
-This is a static site -- no build step, no `npm install`. Any local web
-server works (it must be served over HTTP, not opened as a `file://` URL,
-or the ES module imports won't load):
+It's a static site plus two small PHP endpoints for short links.
 
 ```bash
 cd map-my-route
-python3 -m http.server 8080
-# then open http://localhost:8080
+php -S localhost:8080        # serves the site AND the PHP short-link endpoints
 ```
 
-or, with Node installed:
+(`python3 -m http.server` also works for everything except short links.)
 
-```bash
-npx serve map-my-route
-```
+Production is Apache with `mod_php` (see `deploy/`). Short links are stored as
+small files in `/var/www/mapmyroute-data/` (outside the web root, writable by
+`www-data`): ids are 10 lowercase look-alike-free characters, 40 new links per
+IP per hour, 600 KB max each, deleted after 180 days unused.
 
-## Routing engines used (both free)
+## Versioning (every update gets a new version)
 
-| Mode | Engine | Needs a key? | Profiles | Road-type coloring |
-|---|---|---|---|---|
-| Default | [OSRM demo server](https://project-osrm.org/) | No | Driving only | No (single color) |
-| Recommended | [openrouteservice](https://openrouteservice.org/) | Yes, free | Driving, Walking, Hiking, Cycling | Yes (road/track/footway/cycleway/steps) |
+Run `./bump-version.sh` before committing any change to `js/`, `css/`, `api/` or
+`index.html`. It updates the page header, the `?v=` cache-busters and the module
+imports, and writes `version.json`. A git pre-commit hook refuses app-file
+commits that keep the old version, and a running page reloads itself once if
+`version.json` is newer than it is (the server sends no cache headers).
 
-To unlock walking/hiking/cycling routes and automatic path-type coloring:
+## Services used (all free, no key)
 
-1. Go to <https://openrouteservice.org/dev/#/signup> and create a free
-   account (no credit card).
-2. Copy your API key from the dashboard.
-3. In the app, click **Settings** (top right) and paste it in. It's saved
-   only in your browser's `localStorage` and is sent only to
-   `api.openrouteservice.org`.
+| What | Service |
+|---|---|
+| Basemap | OpenFreeMap "Bright" (OpenMapTiles schema) |
+| Tap-to-tap routing | OSRM (project-osrm.org demo; FOSSGIS for foot/bike) |
+| Place search / area names | OpenStreetMap Nominatim |
+| Photos | Wikimedia Commons API |
+| Road data fallback | Overpass API (best effort -- often flaky/limited) |
 
-The free tier's exact request limits are set by openrouteservice and can
-change -- check your dashboard if you hit a rate limit. For a single
-person planning routes, the free tier is normally more than enough.
+Optional keys (Settings): openrouteservice (elevation), Google Maps (Street View
+photos). Keys live only in your browser's `localStorage`.
 
 ## Notes and limitations
 
-- The OSRM public demo server is a shared, best-effort community resource
-  (driving profile only) -- fine for trying the app out, but don't hammer
-  it with heavy automated use.
-- openrouteservice's `waytype` classification is a routing engine's coarse
-  category, not a full OpenStreetMap tag dump -- for example, a bridleway
-  and a hiking path can both appear under "Path / bridleway". The legend
-  in the sidebar reflects exactly what's shown.
-- Screenshot export uses `html2canvas`. OpenStreetMap's own tile servers
-  don't send CORS headers, so some browsers will block the canvas read for
-  the base map tiles (the route line and markers, being drawn as regular
-  page elements, still capture fine) -- if you hit a blank/partial
-  capture, use your OS's own screenshot tool instead; there's a note for
-  this in the UI.
-- All map data: &copy; OpenStreetMap contributors. Basemap: OpenFreeMap
-  "Bright" vector style (a free, keyless, Google-Maps-like rendering of
-  OpenMapTiles-schema vector tiles). Routing: OSRM and openrouteservice.
-  None of these are Google products.
+- OSRM and Overpass public servers are shared best-effort services; don't hammer them.
+- Road-type breakdown for drawn routes comes from the road data loaded while you
+  draw; for tap-to-tap routes through never-viewed areas it falls back to
+  Overpass and may show a "not available" note if that is down.
+- Map data: &copy; OpenStreetMap contributors, OpenFreeMap, OpenMapTiles. None of
+  the default services are Google products.
