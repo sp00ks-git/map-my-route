@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.12";
-import { Planner, profileHint } from "./planner.js?v=1.2.12";
-import { renderStats } from "./stats.js?v=1.2.12";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.13";
+import { Planner, profileHint } from "./planner.js?v=1.2.13";
+import { renderStats } from "./stats.js?v=1.2.13";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.12";
-import { openStreetLevelView } from "./streetview.js?v=1.2.12";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.12";
+} from "./share.js?v=1.2.13";
+import { openStreetLevelView } from "./streetview.js?v=1.2.13";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.13";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.12";
+} from "./config.js?v=1.2.13";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -351,8 +351,9 @@ const geoStatusText = document.getElementById("geo-status-text");
 document.getElementById("geo-retry-btn")?.addEventListener("click", () => locateMe());
 document.getElementById("geo-dismiss-btn")?.addEventListener("click", () => (geoStatus.hidden = true));
 
-function showGeoStatus(message) {
+function showGeoStatus(message, { retry = true } = {}) {
   geoStatusText.textContent = message;
+  document.getElementById("geo-retry-btn").hidden = !retry;
   geoStatus.hidden = false;
 }
 
@@ -600,10 +601,14 @@ els.resetColorsBtn.addEventListener("click", () => {
 (async function loadSharedRoute() {
   try {
     let payload = window.location.hash.replace(/^#/, "").match(/^r=(.+)$/)?.[1] || null;
+    let state = null;
     const shortId = new URLSearchParams(window.location.search).get("s");
-    if (!payload && shortId) payload = await resolveShortLink(shortId);
-    if (!payload) return;
-    const state = await decodeRouteFromHash(payload);
+    if (!payload && shortId) {
+      const resolved = await resolveShortLink(shortId);
+      if (resolved.json) state = JSON.parse(resolved.json);
+      else payload = resolved.payload;
+    }
+    if (!state && payload) state = await decodeRouteFromHash(payload);
     if (!state) return;
     els.profileSelect.value = state.profile;
     setMode("planner");
@@ -615,6 +620,8 @@ els.resetColorsBtn.addEventListener("click", () => {
     refreshColorDot();
   } catch (err) {
     console.error("Failed to load shared route:", err);
-    els.shareStatus.textContent = `Couldn't open that shared link: ${err.message || err}`;
+    // Visible on every screen size -- the sidebar status line is below the
+    // fold on phones, which made a failed load look like "nothing happened".
+    showGeoStatus(`Couldn't open that shared route: ${err.message || err}`, { retry: false });
   }
 })();

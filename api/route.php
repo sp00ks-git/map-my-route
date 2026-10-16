@@ -18,4 +18,13 @@ if (!is_file($file)) {
 }
 touch($file); // keep links that are still being used
 header('Cache-Control: public, max-age=3600');
-echo json_encode(['payload' => file_get_contents($file)]);
+$payload = file_get_contents($file);
+$out = ['payload' => $payload];
+// Also hand back the decompressed route JSON: browsers without
+// DecompressionStream (older phones/WebViews) can't gunzip it themselves.
+if (strpos($payload, 'gz1.') === 0) {
+    $bin = base64_decode(strtr(substr($payload, 4), '-_', '+/'), true);
+    $json = $bin === false ? false : @gzdecode($bin);
+    if ($json !== false && strlen($json) < 4000000) $out['json'] = $json;
+}
+echo json_encode($out);

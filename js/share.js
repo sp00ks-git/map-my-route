@@ -115,14 +115,16 @@ export async function createShortLink(hashPayload) {
   return url.toString();
 }
 
-/** Fetch the route payload behind a short link id (see createShortLink). */
+/** Fetch the route behind a short link id (see createShortLink). Returns
+ *  { payload, json } -- `json` is the already-decompressed route when the
+ *  server could provide it, so older browsers needn't gunzip anything. */
 export async function resolveShortLink(id) {
   const res = await fetch(new URL(`api/route.php?id=${encodeURIComponent(id)}`, window.location.href), {
     signal: AbortSignal.timeout(15000),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.payload) throw new Error(data.error || `Short link service returned ${res.status}`);
-  return data.payload;
+  return { payload: data.payload, json: data.json || null };
 }
 
 export function downloadBlob(blob, filename) {

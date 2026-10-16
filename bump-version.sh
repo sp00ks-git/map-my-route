@@ -11,5 +11,6 @@ if [ -n "${1:-}" ]; then new="$1"; else
 fi
 [ "$new" != "$current" ] || { echo "already at $current"; exit 1; }
 files=$(grep -lF "$current" index.html js/*.js)
+printf '{"version":"%s"}\n' "$new" > version.json
 sed -i "s/$(printf '%s' "$current" | sed 's/\./\\./g')/$new/g" $files
 echo "bumped $current -> $new in: $(echo $files | tr '\n' ' ')"

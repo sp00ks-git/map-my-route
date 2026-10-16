@@ -7,15 +7,34 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.12" />
-<link rel="stylesheet" href="css/style.css?v=1.2.12" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.13" />
+<!-- Self-heal stale caches: if the HTML this browser is running is older than
+     the version on the server (version.json is never cached), reload once so it
+     picks up the new scripts/styles instead of running old code. -->
+<script>
+  (function () {
+    var running = "1.2.13";
+    try {
+      fetch("version.json?_=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.version || j.version === running) return;
+          if (sessionStorage.getItem("mmr-reloaded") === j.version) return; // never loop
+          sessionStorage.setItem("mmr-reloaded", j.version);
+          location.reload();
+        })
+        .catch(function () {});
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css?v=1.2.13" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.12</span>
+    <span class="app-version">v1.2.13</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -172,8 +191,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.12"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.13"></script>
 
-<script type="module" src="js/main.js?v=1.2.12"></script>
+<script type="module" src="js/main.js?v=1.2.13"></script>
 </body>
 </html>
