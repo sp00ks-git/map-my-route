@@ -14,9 +14,9 @@
 // Tap-to-tap legs (tap a point, tap another) DO use real routing (OSRM) --
 // there "find me the way from A to B" is the correct behaviour.
 
-import { getRoute, matchGesture } from "./routing.js?v=1.2.29";
-import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.29";
-import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.29";
+import { getRoute, matchGesture } from "./routing.js?v=1.2.36";
+import { getOrsKey, PROFILE_LABELS, getProfileColor, WAYTYPE_STYLES } from "./config.js?v=1.2.36";
+import { fetchWaysInBbox, snapToNearestWay, bboxFromMapBounds, buildTraceGeometry, pathLengthM, findNetworkPath, distanceByWaytype } from "./waytype.js?v=1.2.36";
 
 // Keep drawing available from a country view down to street level. At low
 // zooms the vector tiles contain fewer minor roads, so release-time matching
@@ -102,7 +102,7 @@ export class Planner {
       style: OPENFREEMAP_STYLE,
       center: [-1.5, 52.5],
       zoom: 6,
-      attributionControl: true,
+      attributionControl: false, // added below so phones can put it bottom-left
       touchZoomRotate: true,
       dragRotate: true,
       pitchWithRotate: false,
@@ -111,6 +111,32 @@ export class Planner {
       // captureMapCanvas -- so no preserveDrawingBuffer; MapLibre 5 ignores it.)
     });
     this.map.touchZoomRotate.enableRotation();
+
+    // Map credit (required by the OSM/OpenMapTiles licences). On phones it
+    // goes bottom-LEFT: bottom-right is where the draw/undo/reset buttons stack,
+    // and the credit's "i" circle used to sit hidden behind the X button.
+    const phone = window.matchMedia("(max-width: 820px)");
+    this._attribution = new maplibregl.AttributionControl({ compact: true });
+    const placeAttribution = () => {
+      if (this._attributionAdded) this.map.removeControl(this._attribution);
+      this.map.addControl(this._attribution, phone.matches ? "bottom-left" : "bottom-right");
+      this._attributionAdded = true;
+      if (phone.matches) {
+        // MapLibre keeps re-opening its own compact toggle, so on phones the
+        // credit text is folded away by CSS until the "i" is tapped.
+        const box = this._attribution._container;
+        const button = box?.querySelector(".maplibregl-ctrl-attrib-button");
+        if (button && !button.dataset.creditToggle) {
+          button.dataset.creditToggle = "1";
+          button.addEventListener("click", (e) => {
+            e.preventDefault(); // don't let the native <details> toggle fight our own show/hide
+            box.classList.toggle("show-credit");
+          });
+        }
+      }
+    };
+    placeAttribution();
+    phone.addEventListener("change", placeAttribution);
 
     if (this.map.loaded()) this._onLoad();
     else this.map.once("load", () => this._onLoad());

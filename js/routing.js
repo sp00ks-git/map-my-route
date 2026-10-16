@@ -24,8 +24,8 @@ import {
   PROFILE_LABELS,
   getWaytypeColor,
   getProfileColor,
-} from "./config.js?v=1.2.29";
-import { classifyRoute } from "./waytype.js?v=1.2.29";
+} from "./config.js?v=1.2.36";
+import { classifyRoute } from "./waytype.js?v=1.2.36";
 
 /** Turn a set of [fromIndex, toIndex, waytypeId] ranges (ORS's own shape, or
  *  our own free OSM-based classifier's output) into rendered segments +
