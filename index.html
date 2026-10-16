@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.14" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.16" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.14";
+    var running = "1.2.16";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,22 +27,22 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.14" />
+<link rel="stylesheet" href="css/style.css?v=1.2.16" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.14</span>
+    <span class="app-version">v1.2.16</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
     <button id="mode-globe" class="mode-btn" role="tab" aria-selected="false">Globe</button>
-  <button id="mode-planner" class="mode-btn active" role="tab" aria-selected="true">Route Planner</button>
+  <button id="mode-planner" class="mode-btn active" role="tab" aria-selected="true">Route<span class="mode-btn-extra"> Planner</span></button>
   </div>
 
-  <button id="settings-btn" class="icon-btn" title="Settings (API key)">&#9881;&#65039; Settings</button>
+  <button id="settings-btn" class="icon-btn" title="Settings (API key)" aria-label="Settings">&#9881;&#65039;<span class="icon-btn-label"> Settings</span></button>
 </header>
 
 <main class="app-main">
@@ -99,7 +99,15 @@
         </div>
       </div>
 
-      <aside class="sidebar">
+      <aside class="sidebar" id="route-sheet">
+        <!-- Phones only: this bar is all that shows until it's tapped, then the
+             Route panel slides up over the map. Hidden on wide screens. -->
+        <button id="sheet-handle" class="sheet-handle" type="button" aria-expanded="false" aria-controls="route-sheet">
+          <span class="sheet-grabber" aria-hidden="true"></span>
+          <span class="sheet-title">Route</span>
+          <span id="sheet-summary" class="sheet-summary">Draw or tap a route</span>
+          <span class="sheet-chevron" aria-hidden="true">&#9650;</span>
+        </button>
         <div class="sidebar-block">
           <h2>Route</h2>
           <label class="field-label" for="profile-select">Travel mode</label>
@@ -191,8 +199,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.14"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.16"></script>
 
-<script type="module" src="js/main.js?v=1.2.14"></script>
+<script type="module" src="js/main.js?v=1.2.16"></script>
 </body>
 </html>

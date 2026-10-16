@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.14";
-import { Planner, profileHint } from "./planner.js?v=1.2.14";
-import { renderStats } from "./stats.js?v=1.2.14";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.16";
+import { Planner, profileHint } from "./planner.js?v=1.2.16";
+import { renderStats } from "./stats.js?v=1.2.16";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,9 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.14";
-import { openStreetLevelView } from "./streetview.js?v=1.2.14";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.14";
+} from "./share.js?v=1.2.16";
+import { openStreetLevelView } from "./streetview.js?v=1.2.16";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.16";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +23,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.14";
+} from "./config.js?v=1.2.16";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -87,6 +87,7 @@ function setMode(mode) {
   els.modePlanner.classList.toggle("active", !isGlobe);
   els.modeGlobe.setAttribute("aria-selected", String(isGlobe));
   els.modePlanner.setAttribute("aria-selected", String(!isGlobe));
+  document.body.classList.toggle("globe-view", isGlobe);
   if (!isGlobe) setTimeout(() => planner.map.resize(), 50);
   else if (globeMap) setTimeout(() => globeMap.resize(), 50);
 }
@@ -137,6 +138,7 @@ function updateShareLink() {
 const planner = new Planner("planner-map", {
   onRouteChange: (result) => {
     renderStats(result, els);
+    window.updateSheetSummary?.(result);
     els.undoBtn.disabled = planner.waypoints.length === 0;
     els.clearBtn.disabled = planner.waypoints.length === 0;
     els.shareStatus.textContent = "";
@@ -198,6 +200,61 @@ refreshProfileHint();
       els.shareStatus.textContent = `Coordinates: ${text}`;
     }
   });
+})();
+
+// ---------- Phone layout: compact header row + bottom sheet ----------
+(function wirePhoneLayout() {
+  const mq = window.matchMedia("(max-width: 820px)");
+  const header = document.querySelector(".app-header");
+  const settingsBtn = document.getElementById("settings-btn");
+  const coords = document.getElementById("map-coords");
+  const search = document.querySelector(".map-search");
+  const mapWrap = document.querySelector(".map-wrap");
+  const sheet = document.getElementById("route-sheet");
+  const handle = document.getElementById("sheet-handle");
+  const summary = document.getElementById("sheet-summary");
+
+  // On phones the lat/lng chip and the search box live in the header row, next
+  // to the Globe / Route tabs, instead of floating over (and hiding) the map.
+  const place = () => {
+    if (mq.matches) {
+      header.insertBefore(coords, settingsBtn);
+      header.insertBefore(search, settingsBtn);
+    } else {
+      const controls = mapWrap.querySelector(".map-controls");
+      mapWrap.insertBefore(coords, controls);
+      mapWrap.insertBefore(search, controls);
+      setSheet(false);
+    }
+    planner.map.resize();
+  };
+
+  function setSheet(open) {
+    sheet.classList.toggle("open", open);
+    handle.setAttribute("aria-expanded", String(open));
+  }
+  handle.addEventListener("click", () => setSheet(!sheet.classList.contains("open")));
+  // Touching the map folds the sheet away again -- more map, less fiddling.
+  planner.whenReady().then(() => {
+    planner.map.getContainer().addEventListener("pointerdown", () => {
+      if (mq.matches) setSheet(false);
+    });
+  });
+
+  // The collapsed handle doubles as a one-line route summary.
+  window.updateSheetSummary = (result) => {
+    if (!result) {
+      summary.textContent = "Draw or tap a route";
+      return;
+    }
+    const km = result.distanceM >= 1000 ? `${(result.distanceM / 1000).toFixed(2)} km` : `${Math.round(result.distanceM)} m`;
+    const mins = Math.round(result.durationS / 60);
+    const time = mins < 1 ? "<1 min" : mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+    summary.textContent = `${PROFILE_LABELS[planner.profile] || "Route"} \u00B7 ${km} \u00B7 ${time}`;
+  };
+
+  mq.addEventListener("change", place);
+  place();
 })();
 
 // Exposed for debugging/automated tests (console, Playwright). Not used by

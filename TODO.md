@@ -31,12 +31,14 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Housekeeping
 
-8. Mobile layout: controls (search, pan arrows, pop-ups) cover the small map; map area is short because the route panel takes the rest of the screen.
+8. Mobile layout: DONE in v1.2.16 (see Done). Remaining ideas: shrink the location-blocked toast on phones; show '<1 min' in the stats panel too (it says '0 min').
 9. `origin/main` is still at the first commit; the work lives on `live`. Decide whether to fast-forward `main`.
 10. RULE: every update ships under a new version number (`./bump-version.sh`); the pre-commit hook enforces it.
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.16: phone layout — one compact top row (tiny Globe/Route tabs, live lat/lng, search, settings gear; logo + version stacked at the left), and the Route panel is now a bottom sheet (tap the bar to open, tap the map or the bar to close; the collapsed bar shows `Driving · 140 m · <1 min`). Map is full height. Also fixed `Planner.whenReady()` so several callers can wait on it (only the last was released before).
 
 - v1.2.14: short links retyped on a phone failed (server log showed the phone requesting `lzx1NZhb`, lowercase L, for `Izx1NZhb`, capital i). New ids use a no-look-alike lowercase alphabet (10 chars); lookups also accept wrong case / I-l-1 / O-0 mix-ups when the match is unique, so old links keep working.
 
