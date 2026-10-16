@@ -524,6 +524,21 @@ select, input[type="text"] {
 }
 .modal .modal-actions button { flex: 1 1 auto; }
 
+.gpx-help {
+  margin: 4px 0 12px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+.gpx-help summary {
+  cursor: pointer;
+  color: var(--accent);
+  padding: 4px 0;
+}
+.gpx-help p, .gpx-help ul { margin: 6px 0; }
+.gpx-help ul { padding-left: 18px; }
+.gpx-help li { margin: 4px 0; }
+.gpx-help strong { color: var(--text); }
+
 .saved-list {
   list-style: none;
   margin: 10px 0 8px;

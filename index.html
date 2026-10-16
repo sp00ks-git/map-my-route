@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.18" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.19" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.18";
+    var running = "1.2.19";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.18" />
+<link rel="stylesheet" href="css/style.css?v=1.2.19" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.18</span>
+    <span class="app-version">v1.2.19</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -162,6 +162,28 @@
             <button id="screenshot-btn" class="secondary-btn">&#128247; Screenshot</button>
             <button id="gpx-btn" class="secondary-btn">&#11015;&#65039; Export GPX</button>
           </div>
+          <details class="gpx-help">
+            <summary>What&rsquo;s a GPX file?</summary>
+            <p>
+              GPX is the standard file format for GPS routes &mdash; just your route as a list of
+              points, plus Start and Finish pins. <strong>Export GPX</strong> lets you take the route
+              off this website and use it for real:
+            </p>
+            <ul>
+              <li><strong>Follow it with live GPS</strong> on your phone, watch or bike computer, even with no signal once it&rsquo;s loaded.</li>
+              <li><strong>Keep or share the route</strong> as a file, and open it later in almost any maps app.</li>
+              <li><strong>Plan here, ride/walk with your usual app.</strong> Nothing is uploaded anywhere.</li>
+            </ul>
+            <p><strong>How to open it</strong></p>
+            <ul>
+              <li><strong>Android:</strong> tap the downloaded file (or find it in Files &rarr; Downloads), choose an app such as OsmAnd, Organic Maps, Komoot or Gaia GPS, and it opens as a route.</li>
+              <li><strong>iPhone / iPad:</strong> tap the download, then Share &rarr; pick an app such as Organic Maps, Komoot, OsmAnd or Gaia GPS. (If it only previews as text, use the Share button.)</li>
+              <li><strong>Garmin:</strong> Garmin Connect &rarr; Training &rarr; Courses &rarr; Import, or open it in BaseCamp, then send it to your device.</li>
+              <li><strong>Computer:</strong> Google Earth Pro &rarr; File &rarr; Open, or any GPX viewer such as gpx.studio.</li>
+            </ul>
+            <p class="tiny-hint">Google Maps itself can&rsquo;t open GPX files directly.</p>
+          </details>
+
           <label class="field-label" for="share-link">Shareable link</label>
           <div class="share-row">
             <input id="share-link" type="text" readonly />
@@ -208,8 +230,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.18"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.19"></script>
 
-<script type="module" src="js/main.js?v=1.2.18"></script>
+<script type="module" src="js/main.js?v=1.2.19"></script>
 </body>
 </html>

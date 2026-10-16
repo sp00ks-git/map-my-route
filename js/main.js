@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.18";
-import { Planner, profileHint } from "./planner.js?v=1.2.18";
-import { renderStats } from "./stats.js?v=1.2.18";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.19";
+import { Planner, profileHint } from "./planner.js?v=1.2.19";
+import { renderStats } from "./stats.js?v=1.2.19";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,8 +9,8 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.18";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.18";
+} from "./share.js?v=1.2.19";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.19";
 import {
   getOrsKey,
   setOrsKey,
@@ -22,7 +22,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.18";
+} from "./config.js?v=1.2.19";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -781,11 +781,17 @@ els.screenshotBtn.addEventListener("click", async () => {
   }
 });
 
-els.gpxBtn.addEventListener("click", () => {
+els.gpxBtn.addEventListener("click", async () => {
   const state = planner.getState();
   if (!state.result) return;
-  const gpx = buildGpx(state.result.coords);
-  downloadBlob(new Blob([gpx], { type: "application/gpx+xml" }), "map-my-route.gpx");
+  const km = (state.result.distanceM / 1000).toFixed(2);
+  const label = `${PROFILE_LABELS[state.profile] || "Route"} ${km} km`;
+  const gpx = buildGpx(state.result.coords, `Map My Route - ${label}`);
+  const start = planner.waypoints[0];
+  const area = start ? await reverseAreaName(start[0], start[1]) : "";
+  const name = ["MapMyRoute", timestampForFilename(), fileSafe(area)].filter(Boolean).join("_");
+  downloadBlob(new Blob([gpx], { type: "application/gpx+xml" }), `${name}.gpx`);
+  els.shareStatus.textContent = `GPX saved as ${name}.gpx -- see "What's a GPX file?" below for how to open it.`;
 });
 
 els.copyLinkBtn.addEventListener("click", async () => {

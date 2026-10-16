@@ -22,9 +22,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 ## New features
 
 6. ~~Save up to 5 routes~~ — DONE v1.2.18 (see Done). Open idea: rename saved routes.
-7. **GPX export.**
-   - Check the current export produces a valid file (untested).
-   - Add a short "What's this?" next to the button: GPX is a standard route file; load it into Google Earth, Garmin, Komoot, OsmAnd or a phone GPS app to follow the route live. Include simple open-with steps for the common apps.
+7. ~~GPX export~~ — DONE v1.2.19 (see Done).
 
 ## Housekeeping
 
@@ -34,6 +32,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.19: GPX export checked and improved: valid GPX 1.1 (parsed + point count verified), Start/Finish waypoints, timestamp, XML-escaped names, filename `MapMyRoute_<date>_<time>_<area>.gpx`; plus a "What's a GPX file?" panel explaining the benefit and how to open it on Android, iPhone, Garmin and desktop.
 
 - v1.2.18: Saved routes (max 5, in memory only): Save/Update, New route, open any saved route, delete. Saving a 6th shows a styled confirm popup naming the oldest route that will be removed. Unsaved changes prompt (Cancel / without saving / save first). Modal z-index raised above the phone header and sheet.
 - v1.2.17: Street View button removed.

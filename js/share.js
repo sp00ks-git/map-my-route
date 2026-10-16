@@ -138,18 +138,32 @@ export function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+function escapeXml(text) {
+  return String(text).replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]);
+}
+
+/** GPX 1.1: the route as a track, plus Start/Finish waypoints so GPS apps show
+ *  pins. Coordinates are the [lat,lng] pairs of the drawn/snapped route. */
 export function buildGpx(coords, name = "Map My Route") {
-  const points = coords
-    .map(([lat, lng]) => `      <trkpt lat="${lat}" lon="${lng}"></trkpt>`)
-    .join("\n");
+  const fmt = (n) => Number(n).toFixed(6);
+  const safeName = escapeXml(name);
+  const points = coords.map(([lat, lng]) => `      <trkpt lat="${fmt(lat)}" lon="${fmt(lng)}"/>`).join("\n");
+  const [startLat, startLng] = coords[0];
+  const [endLat, endLng] = coords[coords.length - 1];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Map My Route" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata><name>${name}</name></metadata>
+  <metadata>
+    <name>${safeName}</name>
+    <time>${new Date().toISOString()}</time>
+  </metadata>
+  <wpt lat="${fmt(startLat)}" lon="${fmt(startLng)}"><name>Start</name></wpt>
+  <wpt lat="${fmt(endLat)}" lon="${fmt(endLng)}"><name>Finish</name></wpt>
   <trk>
-    <name>${name}</name>
+    <name>${safeName}</name>
     <trkseg>
 ${points}
     </trkseg>
   </trk>
-</gpx>`;
+</gpx>
+`;
 }
