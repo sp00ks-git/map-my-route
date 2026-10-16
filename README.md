@@ -28,9 +28,6 @@ started.
   browsers/networks block that cross-origin call (it's outside this app's
   control), in which case the full link is shown instead and works exactly
   the same.
-- **Street-level imagery** -- opens the nearest available photos in
-  [Mapillary](https://www.mapillary.com/), a free, open, crowd-sourced
-  alternative to Google Street View, centered on your route.
 
 ## Running it locally
 
@@ -88,4 +85,4 @@ person planning routes, the free tier is normally more than enough.
 - All map data: &copy; OpenStreetMap contributors. Basemap: OpenFreeMap
   "Bright" vector style (a free, keyless, Google-Maps-like rendering of
   OpenMapTiles-schema vector tiles). Routing: OSRM and openrouteservice.
-  Street-level imagery: Mapillary. None of these are Google products.
+  None of these are Google products.

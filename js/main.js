@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.16";
-import { Planner, profileHint } from "./planner.js?v=1.2.16";
-import { renderStats } from "./stats.js?v=1.2.16";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.17";
+import { Planner, profileHint } from "./planner.js?v=1.2.17";
+import { renderStats } from "./stats.js?v=1.2.17";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,9 +9,8 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.16";
-import { openStreetLevelView } from "./streetview.js?v=1.2.16";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.16";
+} from "./share.js?v=1.2.17";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.17";
 import {
   getOrsKey,
   setOrsKey,
@@ -23,7 +22,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.16";
+} from "./config.js?v=1.2.17";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -47,7 +46,6 @@ const els = {
 
   screenshotBtn: document.getElementById("screenshot-btn"),
   gpxBtn: document.getElementById("gpx-btn"),
-  streetviewBtn: document.getElementById("streetview-btn"),
   shareLink: document.getElementById("share-link"),
   copyLinkBtn: document.getElementById("copy-link-btn"),
   shortenBtn: document.getElementById("shorten-btn"),
@@ -564,12 +562,6 @@ els.gpxBtn.addEventListener("click", () => {
   if (!state.result) return;
   const gpx = buildGpx(state.result.coords);
   downloadBlob(new Blob([gpx], { type: "application/gpx+xml" }), "map-my-route.gpx");
-});
-
-els.streetviewBtn.addEventListener("click", () => {
-  const state = planner.getState();
-  const point = state.waypoints[0] || [planner.map.getCenter().lat, planner.map.getCenter().lng];
-  openStreetLevelView(point[0], point[1]);
 });
 
 els.copyLinkBtn.addEventListener("click", async () => {

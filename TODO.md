@@ -10,7 +10,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Removals / changes
 
-4. **Remove Street View** (button, `js/streetview.js`, its import in `js/main.js`).
+4. ~~Remove Street View~~ — DONE v1.2.17 (button, handler and import removed; the now-unused `js/streetview.js` file was left in place because deleting files under /var is blocked by policy — delete it when you're happy).
 5. **Start/finish photos without leaving the site.** User asked for Google Maps; needs a Google Cloud API key (see below).
    - Plan: Google Street View Static API (`<img>` on our page, no redirect) with the free metadata check first so we only show a photo where coverage exists; Maps Static API thumbnail as fallback. Key must be created by the owner, billing enabled, and restricted to our domain by HTTP referrer (it is visible in the browser). Check current Google pricing/free tier before launch.
    - If no key is supplied: fall back to Wikimedia Commons / Mapillary photos.

@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.16" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.17" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.16";
+    var running = "1.2.17";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.16" />
+<link rel="stylesheet" href="css/style.css?v=1.2.17" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.16</span>
+    <span class="app-version">v1.2.17</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -151,7 +151,6 @@
           <div class="button-row wrap">
             <button id="screenshot-btn" class="secondary-btn">&#128247; Screenshot</button>
             <button id="gpx-btn" class="secondary-btn">&#11015;&#65039; Export GPX</button>
-            <button id="streetview-btn" class="secondary-btn">&#128694; Street-level view</button>
           </div>
           <label class="field-label" for="share-link">Shareable link</label>
           <div class="share-row">
@@ -199,8 +198,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.16"></script>
+<script src="vendor/maplibre-gl.js?v=1.2.17"></script>
 
-<script type="module" src="js/main.js?v=1.2.16"></script>
+<script type="module" src="js/main.js?v=1.2.17"></script>
 </body>
 </html>
