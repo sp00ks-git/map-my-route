@@ -11,13 +11,7 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 ## Removals / changes
 
 4. ~~Remove Street View~~ — DONE v1.2.17 (button, handler and import removed; the now-unused `js/streetview.js` file was left in place because deleting files under /var is blocked by policy — delete it when you're happy).
-5. **Start/finish photos without leaving the site.** User asked for Google Maps; needs a Google Cloud API key (see below).
-   - Plan: Google Street View Static API (`<img>` on our page, no redirect) with the free metadata check first so we only show a photo where coverage exists; Maps Static API thumbnail as fallback. Key must be created by the owner, billing enabled, and restricted to our domain by HTTP referrer (it is visible in the browser). Check current Google pricing/free tier before launch.
-   - If no key is supplied: fall back to Wikimedia Commons / Mapillary photos.
-   - Earlier notes:
-   - Google imagery needs a paid API key and its terms forbid scraping, so not Google.
-   - Free options: Wikimedia Commons geosearch (nearby photos), Mapillary image API, static map thumbnail as fallback.
-   - Suggested: Wikimedia/Mapillary photo where one exists, map thumbnail otherwise; load on demand when the user clicks.
+5. ~~Start/finish photos~~ — DONE v1.2.20 (Wikimedia Commons; Google Street View is wired up but UNTESTED until a Google key is entered in Settings).
 
 ## New features
 
@@ -32,6 +26,8 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
 
 ## Done
+
+- v1.2.20: "Photos of start & finish" button — shows the nearest openly-licensed photo (Wikimedia Commons / Geograph, with distance, author, licence and a details link) for each end, on the page, loaded on demand; clears when the route changes; clear message if the lookup fails. Optional Google Maps API key in Settings switches to Google Street View where Google has coverage, falling back to Commons (that Google path has not been tested — needs a real key).
 
 - v1.2.19: GPX export checked and improved: valid GPX 1.1 (parsed + point count verified), Start/Finish waypoints, timestamp, XML-escaped names, filename `MapMyRoute_<date>_<time>_<area>.gpx`; plus a "What's a GPX file?" panel explaining the benefit and how to open it on Android, iPhone, Garmin and desktop.
 

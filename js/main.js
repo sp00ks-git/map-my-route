@@ -1,6 +1,6 @@
-import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.19";
-import { Planner, profileHint } from "./planner.js?v=1.2.19";
-import { renderStats } from "./stats.js?v=1.2.19";
+import { initGlobe, getGlobeCenter } from "./globe.js?v=1.2.20";
+import { Planner, profileHint } from "./planner.js?v=1.2.20";
+import { renderStats } from "./stats.js?v=1.2.20";
 import {
   encodeRouteToHash,
   decodeRouteFromHash,
@@ -9,11 +9,14 @@ import {
   resolveShortLink,
   downloadBlob,
   buildGpx,
-} from "./share.js?v=1.2.19";
-import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.19";
+} from "./share.js?v=1.2.20";
+import { searchPlaces, reverseAreaName } from "./geocode.js?v=1.2.20";
+import { findPhoto } from "./photos.js?v=1.2.20";
 import {
   getOrsKey,
   setOrsKey,
+  getGoogleKey,
+  setGoogleKey,
   PROFILE_LABELS,
   PROFILE_COLORS,
   WAYTYPE_STYLES,
@@ -22,7 +25,7 @@ import {
   getWaytypeColor,
   setWaytypeColor,
   resetColorOverrides,
-} from "./config.js?v=1.2.19";
+} from "./config.js?v=1.2.20";
 
 const els = {
   modeGlobe: document.getElementById("mode-globe"),
@@ -33,6 +36,9 @@ const els = {
 
   profileSelect: document.getElementById("profile-select"),
   profileHint: document.getElementById("profile-hint"),
+  photosBtn: document.getElementById("photos-btn"),
+  photosGrid: document.getElementById("photos-grid"),
+  googleKeyInput: document.getElementById("google-key-input"),
   saveRouteBtn: document.getElementById("save-route-btn"),
   newRouteBtn: document.getElementById("new-route-btn"),
   savedList: document.getElementById("saved-list"),
@@ -141,6 +147,10 @@ const planner = new Planner("planner-map", {
   onRouteChange: (result) => {
     renderStats(result, els);
     window.updateSheetSummary?.(result);
+    if (!result || routeSignature() !== photosForSignature) {
+      clearPhotos();
+      photosForSignature = routeSignature();
+    }
     // Only a real change to the route counts as an edit (not a stats refresh).
     if (!restoringRoute && routeSignature() !== savedSignature) routeDirty = true;
     // Clearing/undoing everything detaches the map from its saved slot, so the
@@ -213,6 +223,69 @@ refreshProfileHint();
   });
 })();
 
+// ---------- Start / finish photos ----------
+function photoCard(label, photo, error) {
+  const card = document.createElement("figure");
+  card.className = "photo-card";
+  if (!photo) {
+    const msg = document.createElement("div");
+    msg.className = "photo-empty";
+    msg.textContent = error ? `${label}: couldn't load a photo (${error}).` : `${label}: no photo found near here.`;
+    card.append(msg);
+    return card;
+  }
+  const img = document.createElement("img");
+  img.src = photo.src;
+  img.alt = `${label}: ${photo.title}`;
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  const cap = document.createElement("figcaption");
+  const strong = document.createElement("strong");
+  strong.textContent = label;
+  cap.append(strong, ` \u00B7 ${photo.title} \u00B7 ${photo.distanceM < 15 ? "at this spot" : `${Math.round(photo.distanceM)} m away`}`);
+  const credit = document.createElement("div");
+  credit.append(`${photo.source}${photo.credit ? ` \u2014 ${photo.credit}` : ""}`);
+  if (photo.pageUrl) {
+    credit.append(" \u00B7 ");
+    const a = document.createElement("a");
+    a.href = photo.pageUrl;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "details";
+    credit.append(a);
+  }
+  cap.append(credit);
+  card.append(img, cap);
+  return card;
+}
+
+function clearPhotos() {
+  els.photosGrid.hidden = true;
+  els.photosGrid.replaceChildren();
+  els.photosBtn.disabled = false;
+}
+
+els.photosBtn.addEventListener("click", async () => {
+  const state = planner.getState();
+  const start = state.waypoints[0];
+  const end = state.waypoints[1] || state.waypoints[0];
+  if (!start) return;
+  els.photosBtn.disabled = true;
+  els.photosGrid.hidden = false;
+  els.photosGrid.replaceChildren(Object.assign(document.createElement("div"), { className: "photo-empty tiny-hint", textContent: "Looking for photos..." }));
+  const key = getGoogleKey();
+  const lookup = async (pt) => {
+    try {
+      return { photo: await findPhoto(pt[0], pt[1], key) };
+    } catch (err) {
+      return { error: err.message || String(err) };
+    }
+  };
+  const [a, b] = await Promise.all([lookup(start), lookup(end)]);
+  els.photosGrid.replaceChildren(photoCard("Start", a.photo, a.error), photoCard("Finish", b.photo, b.error));
+  els.photosBtn.disabled = false;
+});
+
 // ---------- In-page confirm dialog ----------
 /** Styled modal (not window.confirm -- that looks wrong on phones and can be
  *  suppressed). buttons: [{ label, value, primary }]. Resolves with the chosen
@@ -264,6 +337,7 @@ let savedCounter = 0;
 let currentSavedId = null; // which saved slot the route on screen came from
 let routeDirty = false; // changed since it was last saved/loaded?
 let restoringRoute = false;
+let photosForSignature = "";
 let savedSignature = ""; // fingerprint of the route as last saved/loaded, to tell real edits from stats refreshes
 
 function hasUnsavedRoute() {
@@ -859,6 +933,7 @@ function renderColorLists() {
 
 function openSettings() {
   els.orsKeyInput.value = getOrsKey();
+  els.googleKeyInput.value = getGoogleKey();
   renderColorLists();
   els.settingsModal.hidden = false;
 }
@@ -866,6 +941,7 @@ els.settingsBtn.addEventListener("click", openSettings);
 els.closeSettingsBtn.addEventListener("click", () => (els.settingsModal.hidden = true));
 els.saveKeyBtn.addEventListener("click", () => {
   setOrsKey(els.orsKeyInput.value.trim());
+  setGoogleKey(els.googleKeyInput.value.trim());
   els.settingsModal.hidden = true;
   refreshProfileHint();
 });
