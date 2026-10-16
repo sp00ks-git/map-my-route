@@ -1,6 +1,6 @@
 # Map My Route — TODO
 
-Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been started unless marked.
+Last updated 16-10-2026 (current version: v1.2.26). Every item below is done; the only leftovers are the optional ideas in "Still open".
 
 ## Bugs
 
@@ -20,10 +20,17 @@ Last updated 16-10-2026 (current version: v1.2.8). Nothing below has been starte
 
 ## Housekeeping
 
-8. Mobile layout: DONE in v1.2.16 (see Done). Remaining ideas: shrink the location-blocked toast on phones; show '<1 min' in the stats panel too (it says '0 min').
+8. ~~Mobile layout~~ — DONE v1.2.16, polished in v1.2.21 and v1.2.26.
 9. ~~`origin/main` behind `live`~~ — fast-forwarded `main` to `live` (v1.2.21). Day-to-day work still happens on `live`.
 10. RULE: every update ships under a new version number (`./bump-version.sh`); the pre-commit hook enforces it.
 11. Test every feature end-to-end (screenshot, share, GPX, stats) after each change, not just drawing.
+
+## Still open (optional)
+
+- Rename saved routes (names are "Route 1", "Route 2"...).
+- Delete the unused `js/streetview.js` (left in place: deleting under /var needs your OK).
+- Test on a real phone (everything so far was checked in a desktop browser and a phone emulator).
+- Overpass (road-type fallback for tap-to-tap routes through never-viewed areas) is flaky and can fail.
 
 ## Done
 
