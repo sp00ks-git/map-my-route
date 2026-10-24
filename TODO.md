@@ -34,6 +34,8 @@ Last updated 16-10-2026 (current version: v1.2.28). Every item below is done; th
 
 ## Done
 
+- v1.2.37: MapLibre GL upgraded 5.24 -> 6.15 (latest; now an ES module in `vendor/`, exposed to the app as `window.maplibregl`). No npm packages otherwise: the app has no other dependencies. Verified: map, road snapping, live lat/lng, globe, credit control.
+
 - v1.2.36: the map-credit "i" circle that sat hidden behind the X (reset) button: on phones it now lives bottom-left (via MapLibre's own control placement); on desktop it sits just left of the button stack. Credit kept (licence-required). (v1.2.30-32 were intermediate builds.)
 
 - v1.2.29: phones no longer show the up/down/left/right pan arrows (fingers pan natively); desktop keeps them because the mouse can't pan while the pencil is on.

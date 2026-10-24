@@ -7,13 +7,13 @@
 
 <!-- MapLibre is vendored locally: a CDN outage/ad-blocker used to leave the
      whole app dead (maplibregl undefined killed every button handler). -->
-<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.36" />
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=1.2.37" />
 <!-- Self-heal stale caches: if the HTML this browser is running is older than
      the version on the server (version.json is never cached), reload once so it
      picks up the new scripts/styles instead of running old code. -->
 <script>
   (function () {
-    var running = "1.2.36";
+    var running = "1.2.37";
     try {
       fetch("version.json?_=" + Date.now(), { cache: "no-store" })
         .then(function (r) { return r.json(); })
@@ -27,14 +27,14 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="css/style.css?v=1.2.36" />
+<link rel="stylesheet" href="css/style.css?v=1.2.37" />
 </head>
 <body>
 <header class="app-header">
   <a class="brand" href="." title="Reload Map My Route">
     <span class="brand-mark">&#128506;</span>
     <span class="brand-name">Map My Route</span>
-    <span class="app-version">v1.2.36</span>
+    <span class="app-version">v1.2.37</span>
   </a>
 
   <div class="mode-toggle" role="tablist" aria-label="View mode">
@@ -239,8 +239,8 @@
   </div>
 </div>
 
-<script src="vendor/maplibre-gl.js?v=1.2.36"></script>
+<script type="module">import * as maplibregl from "./vendor/maplibre-gl.mjs?v=1.2.37"; window.maplibregl = maplibregl;</script>
 
-<script type="module" src="js/main.js?v=1.2.36"></script>
+<script type="module" src="js/main.js?v=1.2.37"></script>
 </body>
 </html>
